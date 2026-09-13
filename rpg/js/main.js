@@ -2,10 +2,15 @@ import { CLASSES } from './data/classes.js';
 import { ABILITIES } from './data/abilities.js';
 import { ITEMS } from './data/items.js';
 import { MONSTERS } from './data/monsters.js';
+import { QUESTS } from './data/quests.js';
 import { Player } from './engine/character.js';
 import { Combat } from './engine/combat.js';
 import { World } from './engine/world.js';
 import { parseCommand } from './engine/parser.js';
+import {
+  findNpc, npcsAtLocation, tryGiveItem, findNpcForItem,
+  questsAwaitingTurnIn, questRequirementsMet, nextIdleLine, getNode, resolveOption
+} from './engine/quests.js';
 
 const SAVE_KEY = 'text-crpg-save-v1';
 
@@ -15,11 +20,12 @@ const formEl = document.getElementById('input-form');
 const sidebarEl = document.getElementById('sidebar');
 const chipsEl = document.getElementById('chips');
 
-let state = 'intro'; // intro | naming | classpick | explore | combat | shop
+let state = 'intro'; // intro | naming | classpick | explore | combat | dialogue | shop
 let player = null;
 let world = null;
 let combat = null;
 let pendingName = null;
+let conversation = null; // { npc, node } while state === 'dialogue'
 
 function print(text, cls = '') {
   const div = document.createElement('div');
@@ -150,6 +156,31 @@ function handleExplore(verb, args) {
         print(`There's no shop here.`, 'bad');
       }
       break;
+    case 'talk': {
+      const npcsHere = npcsAtLocation(world.currentId);
+      const npc = args.length ? findNpc(args.join(' '), world.currentId) : npcsHere[0];
+      if (!npc) { print(`There's no one here to talk to.`, 'bad'); break; }
+
+      const ready = questsAwaitingTurnIn(npc, player).filter(q => questRequirementsMet(player, q));
+      ready.forEach(q => {
+        print(`(You have what they need for "${q.name}" — try "give ${ITEMS[q.requires[0].item].name.toLowerCase()}".)`, 'flavor');
+      });
+
+      const node = getNode(npc, 'start', player);
+      if (node) {
+        startConversation(npc, node);
+      } else {
+        print(`${npc.name}: "${nextIdleLine(npc, player)}"`);
+      }
+      renderSidebar();
+      break;
+    }
+    case 'give':
+      handleGive(args);
+      break;
+    case 'quests':
+      printQuests();
+      break;
     case 'use': {
       const itemId = resolveItemArg(args.join(' '));
       if (!itemId || !player.inventory[itemId]) { print(`You don't have that.`, 'bad'); break; }
@@ -201,9 +232,94 @@ function printStats() {
   }
 }
 
+// ---------- Dialogue mode ----------
+
+function startConversation(npc, node) {
+  conversation = { npc, node };
+  state = 'dialogue';
+  renderConversationNode();
+}
+
+function renderConversationNode() {
+  const { npc, node } = conversation;
+  node.text.forEach(line => print(`${npc.name}: ${line}`, 'flavor'));
+  node.options.forEach((opt, i) => print(`  ${i + 1}. ${opt.label}`));
+  print(`(Type a number, or "leave" to end the conversation.)`, 'flavor');
+  setChips([...node.options.map((_, i) => String(i + 1)), 'leave']);
+}
+
+function handleDialogueRaw(raw) {
+  const trimmed = raw.trim().toLowerCase();
+  if (['leave', 'bye', 'exit', 'goodbye'].includes(trimmed)) { endConversation(); return; }
+  if (trimmed === 'help') { renderConversationNode(); return; }
+
+  const { npc, node } = conversation;
+  let idx = -1;
+  if (/^\d+$/.test(trimmed)) {
+    idx = parseInt(trimmed, 10) - 1;
+  } else {
+    idx = node.options.findIndex(o => o.label.toLowerCase() === trimmed || o.label.toLowerCase().includes(trimmed));
+  }
+  const option = node.options[idx];
+  if (!option) { print(`Not sure what you mean. Type a number, or "leave".`, 'bad'); return; }
+
+  const { log, ended, nextNodeId } = resolveOption(option, player);
+  log.forEach(line => print(line, 'good'));
+  renderSidebar();
+
+  if (ended) { endConversation(); return; }
+  const nextNode = getNode(npc, nextNodeId, player);
+  if (!nextNode) { endConversation(); return; }
+  conversation.node = nextNode;
+  renderConversationNode();
+}
+
+function endConversation() {
+  conversation = null;
+  state = 'explore';
+  setChips(['look', 'inventory', 'stats', 'help']);
+  renderSidebar();
+}
+
+function handleGive(args) {
+  if (!args.length) { print(`Give what? Try "give sealed letter" or "give sealed letter to old hunter".`); return; }
+
+  const toIdx = args.indexOf('to');
+  const itemPhrase = (toIdx !== -1 ? args.slice(0, toIdx) : args).join(' ');
+  const npcPhrase = toIdx !== -1 ? args.slice(toIdx + 1).join(' ') : null;
+
+  const itemId = resolveItemArg(itemPhrase);
+  if (!itemId || !player.inventory[itemId]) { print(`You don't have that.`, 'bad'); return; }
+
+  const npc = npcPhrase ? findNpc(npcPhrase, world.currentId) : findNpcForItem(player, itemId, world.currentId);
+  if (!npc) { print(`No one here wants that.`, 'bad'); return; }
+
+  const result = tryGiveItem(player, itemId, npc);
+  if (!result) { print(`${npc.name} has no use for that.`, 'bad'); return; }
+  if (result.missing) { print(`You need more ${ITEMS[itemId].name} than that.`, 'bad'); return; }
+
+  result.log.forEach(line => print(line, 'good'));
+  result.levelUps.forEach(lvl => {
+    print(`You reached level ${lvl.level}!`, 'good');
+    lvl.unlocked.forEach(name => print(`New ability unlocked: ${name}!`, 'good'));
+  });
+  renderSidebar();
+}
+
+function printQuests() {
+  const entries = Object.entries(player.quests);
+  if (!entries.length) { print(`No quests yet. Try talking to people you meet.`); return; }
+  entries.forEach(([id, status]) => {
+    const q = QUESTS[id];
+    if (!q) return;
+    print(`${q.name} — ${status}`, status === 'completed' ? 'flavor' : '');
+  });
+}
+
 function printHelpExplore() {
   printBlock(
-`Commands: look | go <north/south/east/west> | inventory | stats | rest | use <item> | shop (in villages) | save | load`);
+`Commands: look | go <north/south/east/west> | inventory | stats | rest | use <item> | talk <name> | give <item> [to <name>] | quests | shop (in villages) | save | load
+Talking to someone with something to say opens a conversation — type the number of a choice, or "leave" to end it.`);
 }
 
 function handleShop(verb, args) {
@@ -225,6 +341,7 @@ function handleShop(verb, args) {
   } else if (verb === 'sell') {
     if (!itemId || !player.inventory[itemId]) { print(`You don't have that.`, 'bad'); return; }
     const item = ITEMS[itemId];
+    if (item.type === 'quest') { print(`That's important to someone. You shouldn't sell it.`, 'bad'); return; }
     const price = Math.floor((item.price || 4) / 2);
     player.removeItem(itemId);
     player.gold += price;
@@ -391,7 +508,7 @@ function handleInput(raw) {
   if (state === 'dead') {
     if (raw.trim().toLowerCase() === 'restart') {
       logEl.innerHTML = '';
-      player = null; world = null; combat = null; pendingName = null;
+      player = null; world = null; combat = null; pendingName = null; conversation = null;
       beginIntro();
     } else {
       print(`Type "restart" to try again.`);
@@ -400,6 +517,10 @@ function handleInput(raw) {
   }
   if (state === 'won') {
     print(`The story ends here. Refresh the page to play again.`);
+    return;
+  }
+  if (state === 'dialogue') {
+    handleDialogueRaw(raw);
     return;
   }
 

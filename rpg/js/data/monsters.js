@@ -50,7 +50,7 @@ export const MONSTERS = {
       { name: 'Boulder Fist', minDmg: 8, maxDmg: 14, chance: 0.6 },
       { name: 'Ground Slam', minDmg: 5, maxDmg: 8, chance: 0.4 }
     ],
-    loot: [{ item: 'silver_amulet', chance: 1 }],
+    loot: [{ item: 'silver_amulet', chance: 1 }, { item: 'troll_club', chance: 1 }],
     isMiniBoss: true
   },
   stone_golem: {

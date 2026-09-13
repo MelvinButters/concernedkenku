@@ -21,5 +21,15 @@ export const ITEMS = {
   },
   wolf_pelt: { id: 'wolf_pelt', name: 'Wolf Pelt', type: 'junk', price: 5, desc: 'Sells for a little coin.' },
   spider_silk: { id: 'spider_silk', name: 'Spider Silk', type: 'junk', price: 6, desc: 'Sells for a little coin.' },
-  gold_pouch: { id: 'gold_pouch', name: 'Gold Pouch', type: 'gold', amount: 10, desc: 'A small pouch of coin.' }
+  gold_pouch: { id: 'gold_pouch', name: 'Gold Pouch', type: 'gold', amount: 10, desc: 'A small pouch of coin.' },
+
+  // Quest items: no price, can't be bought/sold, exist only to be carried and handed over.
+  sealed_letter: {
+    id: 'sealed_letter', name: 'Sealed Letter', type: 'quest',
+    desc: 'A wax-sealed letter addressed to someone in Millbrook Village.'
+  },
+  troll_club: {
+    id: 'troll_club', name: 'Crude Troll Club', type: 'quest',
+    desc: 'A heavy, splintered club. Proof the troll that carried it is dead.'
+  }
 };

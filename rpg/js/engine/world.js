@@ -1,6 +1,7 @@
 import { LOCATIONS } from '../data/locations.js';
 import { MONSTERS } from '../data/monsters.js';
 import { createMonsterInstance } from './character.js';
+import { npcsAtLocation } from './quests.js';
 
 const DIR_ALIASES = {
   n: 'north', s: 'south', e: 'east', w: 'west',
@@ -23,6 +24,8 @@ export class World {
       const m = MONSTERS[loc.boss];
       lines.push(`${m.name} blocks your way here. You'll need to fight or leave.`);
     }
+    const npcsHere = npcsAtLocation(this.currentId);
+    if (npcsHere.length) lines.push(`You see: ${npcsHere.map(n => n.name).join(', ')}.`);
     lines.push(`Exits: ${exits.join(', ')}`);
     return lines.join('\n');
   }

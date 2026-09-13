@@ -26,6 +26,8 @@ export class Player {
     this.inventory = { health_potion: 2 }; // starting kit
     this.equipment = { weapon: null, trinket: null };
     this.buffs = []; // { stat: 'atk'|'def', amount, turnsLeft }
+    this.quests = {}; // questId -> 'active' | 'completed'
+    this.npcTalkCount = {}; // npcId -> number of times talked to (for rotating flavor lines)
   }
 
   get atk() {
@@ -85,6 +87,10 @@ export class Player {
     this.buffs.forEach(b => b.turnsLeft--);
     this.buffs = this.buffs.filter(b => b.turnsLeft > 0);
   }
+
+  questState(questId) { return this.quests[questId] || null; }
+  startQuest(questId) { this.quests[questId] = 'active'; }
+  completeQuest(questId) { this.quests[questId] = 'completed'; }
 
   addItem(itemId, qty = 1) {
     this.inventory[itemId] = (this.inventory[itemId] || 0) + qty;

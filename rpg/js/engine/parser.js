@@ -11,6 +11,9 @@ const VERB_ALIASES = {
   rest: 'rest', sleep: 'rest',
   take: 'take', get: 'take', pickup: 'take',
   shop: 'shop', buy: 'buy', sell: 'sell',
+  talk: 'talk', speak: 'talk', greet: 'talk',
+  give: 'give', deliver: 'give', turnin: 'give',
+  quests: 'quests', quest: 'quests', journal: 'quests',
   help: 'help', '?': 'help',
   save: 'save', load: 'load'
 };
