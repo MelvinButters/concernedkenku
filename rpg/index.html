@@ -1,19 +1,84 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tile Game</title>
-  <link rel="stylesheet" href="style.css" />
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Aldergrove — a text adventure framework</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
-  <h1>My Tile Game</h1>
-  <canvas id="game" width="640" height="480"></canvas>
-  <p>Move with Arrow keys or WASD.</p>
 
-  <!-- Order matters: tileset and maps must load before game.js runs -->
-  <script src="tileset.js"></script>
-  <script src="maps.js"></script>
-  <script src="game.js"></script>
+<div id="setup-screen" class="screen">
+  <div class="setup-card">
+    <p class="eyebrow">a small dnd-adjacent framework</p>
+    <h1>Aldergrove</h1>
+    <p class="tagline">Name your hero, pick a class, and step onto the forest path.</p>
+
+    <label class="field-label" for="hero-name">Name</label>
+    <input id="hero-name" class="text-input" type="text" placeholder="e.g. Rowan" maxlength="24" autocomplete="off" />
+
+    <p class="field-label">Class</p>
+    <div id="class-grid" class="class-grid"></div>
+
+    <button id="begin-btn" class="begin-btn" disabled>Begin the journey</button>
+  </div>
+</div>
+
+<div id="game-screen" class="screen hidden">
+  <header class="topbar">
+    <span class="topbar-title">Aldergrove</span>
+    <span class="topbar-location" id="sb-location">—</span>
+  </header>
+
+  <main class="game-layout">
+    <section class="log-column">
+      <div id="log" class="log" aria-live="polite"></div>
+      <form id="command-form" class="command-form" autocomplete="off">
+        <span class="prompt-caret">›</span>
+        <input id="command-input" class="command-input" type="text" placeholder="type a command… (try: help)" autocomplete="off" />
+      </form>
+    </section>
+
+    <aside class="sidebar">
+      <div class="sb-block">
+        <div class="sb-header-row">
+          <span id="sb-name" class="sb-name">—</span>
+          <span id="sb-class-level" class="sb-class-level">—</span>
+        </div>
+        <div class="bar-row">
+          <div class="bar hp-bar"><div id="sb-hp-fill" class="bar-fill"></div></div>
+          <span id="sb-hp-text" class="bar-text">0/0 HP</span>
+        </div>
+        <div id="sb-resource-row" class="bar-row hidden">
+          <div class="bar resource-bar"><div id="sb-resource-fill" class="bar-fill"></div></div>
+          <span id="sb-resource-text" class="bar-text">0/0</span>
+        </div>
+        <div class="bar-row">
+          <div class="bar xp-bar"><div id="sb-xp-fill" class="bar-fill"></div></div>
+          <span id="sb-xp-text" class="bar-text">0 XP</span>
+        </div>
+      </div>
+
+      <div class="sb-block">
+        <h2 class="sb-heading">Abilities</h2>
+        <ul id="sb-abilities" class="sb-list"></ul>
+      </div>
+
+      <div class="sb-block">
+        <h2 class="sb-heading">Inventory</h2>
+        <ul id="sb-inventory" class="sb-list"></ul>
+      </div>
+
+      <div class="sb-block">
+        <h2 class="sb-heading">Quest log</h2>
+        <ul id="sb-quests" class="sb-list quest-list"></ul>
+      </div>
+    </aside>
+  </main>
+</div>
+
+<script type="module" src="js/main.js"></script>
 </body>
 </html>
