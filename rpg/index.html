@@ -1,39 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Text CRPG</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tile Game</title>
+  <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
-  <div id="crt">
-    <div id="app">
-      <header id="app-header">
-        <span class="title">TEXT CRPG</span>
-        <span class="subtitle">a graphicless adventure</span>
-      </header>
+  <h1>My Tile Game</h1>
+  <canvas id="game" width="640" height="480"></canvas>
+  <p>Move with Arrow keys or WASD.</p>
 
-      <div id="main">
-        <div id="log-panel">
-          <div id="log" aria-live="polite"></div>
-        </div>
-        <aside id="sidebar"></aside>
-      </div>
-
-      <div id="chips"></div>
-
-      <form id="input-form" autocomplete="off">
-        <span class="prompt">&gt;</span>
-        <input id="input" type="text" autocomplete="off" spellcheck="false" placeholder="type a command…" />
-        <button type="submit">Send</button>
-      </form>
-    </div>
-  </div>
-
-  <script type="module" src="js/main.js"></script>
+  <!-- Order matters: tileset and maps must load before game.js runs -->
+  <script src="js/tileset.js"></script>
+  <script src="js/maps.js"></script>
+  <script src="js/game.js"></script>
 </body>
 </html>
