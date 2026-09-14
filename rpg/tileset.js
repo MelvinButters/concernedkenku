@@ -6,7 +6,7 @@
 //   key      the character used in your ASCII map (e.g. '#')
 //   name     human-readable label (not used by the engine, just for your sanity)
 //   solid    true = player cannot walk onto this tile (walls, deep water, etc.)
-//   sprite   path to an image under assets/sprites/. Set to null to just use "color".
+//   sprite   filename of an image sitting alongside index.html. Set to null to just use "color".
 //   color    fallback fill color, used until the sprite image loads (or if sprite is null)
 //   onEnter  optional function(player) run every time the player steps onto this tile
 
@@ -14,31 +14,31 @@ const TILE_LEGEND = {
   '#': {
     name: 'wall',
     solid: true,
-    sprite: 'assets/sprites/wall.png',
+    sprite: 'wall.png',
     color: '#4a4a4a',
   },
   '$': {
     name: 'floor',
     solid: false,
-    sprite: 'assets/sprites/floor.png',
+    sprite: 'floor.png',
     color: '#c9a06a',
   },
   '^': {
     name: 'grass',
     solid: false,
-    sprite: 'assets/sprites/grass.png',
+    sprite: 'grass.png',
     color: '#4a7c3f',
   },
   '~': {
     name: 'water',
     solid: true, // flip to false if you want the player to be able to wade/swim
-    sprite: 'assets/sprites/water.png',
+    sprite: 'water.png',
     color: '#2a6fbd',
   },
   '%': {
     name: 'bridge',
     solid: false,
-    sprite: 'assets/sprites/bridge.png',
+    sprite: 'bridge.png',
     color: '#8a5a2b',
   },
   '.': {
@@ -52,7 +52,7 @@ const TILE_LEGEND = {
   // 'L': {
   //   name: 'lava',
   //   solid: false,
-  //   sprite: 'assets/sprites/lava.png',
+  //   sprite: 'lava.png',
   //   color: '#c9432a',
   //   onEnter: (player) => {
   //     console.log('Ouch! Stepped in lava.');

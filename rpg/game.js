@@ -47,7 +47,7 @@ function tileAt(x, y) {
 // ---------- Sprite loading ----------
 // Images load asynchronously in the background. Until an image finishes
 // loading (or if you never add one), tiles just render as flat colors —
-// nothing blocks or crashes if assets/sprites/ is empty.
+// nothing blocks or crashes if  is empty.
 
 const spriteCache = {};
 function getSprite(path) {
@@ -62,7 +62,7 @@ function getSprite(path) {
   return img;
 }
 
-const playerSprite = getSprite('assets/sprites/player.png');
+const playerSprite = getSprite('player.png');
 
 // ---------- Input ----------
 
