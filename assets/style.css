@@ -72,9 +72,10 @@ a { color: inherit; }
 }
 
 .brand img {
-  width: 48px;
-  height: 48px;
-  image-rendering: pixelated;
+  height: 64px;
+  width: auto;
+  max-width: 64px;
+  object-fit: contain;
   display: block;
 }
 
