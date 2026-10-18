@@ -1,3 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Map Printer – Concerned Kenku</title>
+<link rel="icon" href="../assets/Kenku.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Pixelify+Sans:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/mapprinter.css">
+<style id="pageStyle"></style>
+</head>
+<body>
+
 <header class="site-header">
   <div class="inner">
     <a class="brand" href="../index.html">
@@ -88,3 +103,365 @@
 </div>
 </main>
 <div id="printArea"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
+<script>
+(function(){
+  let PAGE_W=420, PAGE_H=297; // landscape sheet size in mm (set by paperDims)
+  const MODES={
+    m2:{cols:15,rows:21,pagesX:1,pagesY:2,paper:'a3'},
+    m4:{cols:30,rows:21,pagesX:2,pagesY:2,paper:'a3'},
+    t2:{cols:15,rows:20,pagesX:1,pagesY:2,paper:'tab'},
+    t4:{cols:30,rows:20,pagesX:2,pagesY:2,paper:'tab'},
+    mc:{cols:20,rows:20,pagesX:2,pagesY:2,paper:'a3'}
+  };
+  const $=id=>document.getElementById(id);
+  const stage=$('stage'), work=$('work'), grid=$('grid'), splitEl=$('split'),
+        placeholder=$('placeholder'), printArea=$('printArea'), lock=$('lockAspect');
+  const boxes={m2:$('mode2'),m4:$('mode4'),t2:$('modeT2'),t4:$('modeT4'),mc:$('modeC')};
+  let mode=MODES.m2, modeKey='m2';
+  let wrap=null, handle=null, rotH=null, imgSrc=null, srcImg=null, aspect=1;
+  let st={x:0,y:0,w:50,h:50,r:0}; // % of stage (x,y,w,h), degrees (r)
+  let stageW=0, stageH=0, drag=null;
+  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+
+  /* ---------- geometry ---------- */
+  function paperDims(){ const t=mode.paper==='tab'; PAGE_W=t?431.8:420; PAGE_H=t?279.4:297; }
+  function paperName(){ return mode.paper==='tab'?'Tabloid (11×17in)':'A3'; }
+  function geom(){
+    paperDims();
+    const m=clamp(parseFloat($('margin').value)||0,0,15);
+    const colsPS=mode.cols/mode.pagesX, rowsPS=mode.rows/mode.pagesY;
+    const sq=Math.min((PAGE_W-2*m)/colsPS,(PAGE_H-2*m)/rowsPS);
+    const cellW=colsPS*sq, cellH=rowsPS*sq;
+    return {m,sq,cellW,cellH,offX:(PAGE_W-cellW)/2,offY:(PAGE_H-cellH)/2,fullW:mode.cols*sq,fullH:mode.rows*sq};
+  }
+  function marks(g){
+    const gap=0.8, L=Math.min(6,g.offX,g.offY)-gap;
+    if(g.m<=0||L<1) return [];
+    const x0=g.offX,y0=g.offY,x1=x0+g.cellW,y1=y0+g.cellH, s=[];
+    [[x0,-1],[x1,1]].forEach(([x,dx])=>[[y0,-1],[y1,1]].forEach(([y,dy])=>{
+      s.push([x+dx*gap,y,x+dx*(gap+L),y]);
+      s.push([x,y+dy*gap,x,y+dy*(gap+L)]);
+    }));
+    return s;
+  }
+
+  /* ---------- grid drawing (units = one square width) ---------- */
+  function gridStyle(){
+    const c=$('gridColor').value;
+    return {
+      rgb:[parseInt(c.slice(1,3),16),parseInt(c.slice(3,5),16),parseInt(c.slice(5,7),16)],
+      a:$('gridAlpha').value/100, thick:parseFloat($('gridThick').value),
+      dash:$('gridDash').checked, hex:$('gridType').value==='hex'
+    };
+  }
+  function gridPaths(x0,y0,x1,y1,hex){
+    const P=[], e=1e-9;
+    if(!hex){
+      for(let c=Math.ceil(x0-e);c<=Math.floor(x1+e);c++) P.push([[c,y0],[c,y1]]);
+      for(let r=Math.ceil(y0-e);r<=Math.floor(y1+e);r++) P.push([[x0,r],[x1,r]]);
+      return P;
+    }
+    const R=1/Math.sqrt(3), H=R*1.5;
+    for(let r=Math.floor(y0/H)-2;r<=Math.ceil(y1/H)+1;r++){
+      for(let c=Math.floor(x0)-2;c<=Math.ceil(x1)+1;c++){
+        const cx=c+0.5+((r&1)?0.5:0), cy=R+r*H;
+        const v=k=>{const a=(30+60*k)*Math.PI/180; return [cx+R*Math.cos(a),cy+R*Math.sin(a)];};
+        P.push([v(1),v(2),v(3),v(4)]); // each edge is drawn exactly once
+      }
+    }
+    return P;
+  }
+  function gridSVG(strokeU){
+    const s=gridStyle(); let d='';
+    gridPaths(0,0,mode.cols,mode.rows,s.hex).forEach(p=>{
+      d+='M'+p.map(q=>q[0].toFixed(3)+' '+q[1].toFixed(3)).join('L');
+    });
+    const dash=s.dash?' stroke-dasharray="0.2 0.1333"':'';
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+mode.cols+' '+mode.rows+'" preserveAspectRatio="none">'+
+      '<path d="'+d+'" fill="none" stroke="rgb('+s.rgb.join(',')+')" stroke-opacity="'+s.a+'" stroke-width="'+strokeU+'"'+dash+'/></svg>';
+  }
+  function renderGrid(){
+    const g=geom(), s=gridStyle();
+    const pxPerUnit=stageW/mode.cols;
+    grid.innerHTML=gridSVG(Math.max(s.thick/g.sq,1.2/pxPerUnit));
+    $('gridAlphaVal').textContent=Math.round(s.a*100)+'%';
+    $('gridThickVal').textContent=s.thick.toFixed(2)+'mm';
+  }
+  function renderSplit(){
+    if(!$('showSplit').checked){splitEl.innerHTML=''; return;}
+    let h='',n=0;
+    for(let px=1;px<mode.pagesX;px++) h+='<div class="vl" style="left:'+(px/mode.pagesX*100)+'%"></div>';
+    for(let py=1;py<mode.pagesY;py++) h+='<div class="hl" style="top:'+(py/mode.pagesY*100)+'%"></div>';
+    for(let py=0;py<mode.pagesY;py++) for(let px=0;px<mode.pagesX;px++){
+      n++; h+='<div class="lbl" style="left:'+(px/mode.pagesX*100)+'%;top:'+(py/mode.pagesY*100)+'%">Sheet '+n+'</div>';
+    }
+    splitEl.innerHTML=h;
+  }
+
+  /* ---------- layout / modes ---------- */
+  function layout(){
+    paperDims();
+    $('pageStyle').textContent='@page{size:'+PAGE_W+'mm '+PAGE_H+'mm;margin:0;}';
+    const avail=Math.max(280,work.clientWidth-280);
+    stageW=Math.min(mode.cols*34,avail);
+    stageH=stageW*mode.rows/mode.cols;
+    stage.style.width=stageW+'px'; stage.style.height=stageH+'px';
+    renderGrid(); renderSplit();
+    const g=geom();
+    $('info').textContent='Grid '+mode.cols+'×'+mode.rows+' · squares '+g.sq.toFixed(1)+'mm ('+(g.sq/25.4).toFixed(2)+'in) · '+(mode.pagesX*mode.pagesY)+
+      ' '+paperName()+' landscape sheets ('+mode.pagesX+' across × '+mode.pagesY+' down) · '+g.m+'mm cut margin. Print at 100% / Actual size.';
+  }
+  function remap(oc,or_){ // keep image the same size/position in grid squares when the grid changes
+    if(!wrap) return;
+    const cx=(st.x+st.w/2)/100*oc, cy=(st.y+st.h/2)/100*or_, ws=st.w/100*oc, hs=st.h/100*or_;
+    st.w=ws/mode.cols*100; st.h=hs/mode.rows*100;
+    st.x=cx/mode.cols*100-st.w/2; st.y=cy/mode.rows*100-st.h/2;
+    apply();
+  }
+  function setMode(key){
+    const oc=mode.cols, or_=mode.rows;
+    modeKey=key; mode=MODES[key];
+    Object.keys(boxes).forEach(k=>boxes[k].checked=(k===key));
+    $('customFields').style.display=(key==='mc')?'flex':'none';
+    remap(oc,or_); layout();
+  }
+  Object.keys(boxes).forEach(k=>boxes[k].addEventListener('change',()=>setMode(k)));
+  ['cCols','cRows','cAcross','cDown','cPaper'].forEach(id=>$(id).addEventListener('input',()=>{
+    const oc=mode.cols, or_=mode.rows, M=MODES.mc;
+    M.cols=clamp(parseInt($('cCols').value)||1,1,100);
+    M.rows=clamp(parseInt($('cRows').value)||1,1,100);
+    M.pagesX=clamp(parseInt($('cAcross').value)||1,1,8);
+    M.pagesY=clamp(parseInt($('cDown').value)||1,1,8);
+    M.paper=$('cPaper').value;
+    if(modeKey==='mc'){ remap(oc,or_); layout(); }
+  }));
+  ['gridType','gridColor','gridAlpha','gridThick','gridDash'].forEach(id=>{
+    $(id).addEventListener('input',renderGrid); $(id).addEventListener('change',renderGrid);
+  });
+  $('showSplit').addEventListener('change',renderSplit);
+  $('margin').addEventListener('input',layout);
+  window.addEventListener('resize',layout);
+
+  /* ---------- image ---------- */
+  $('fileInput').addEventListener('change',e=>{
+    const f=e.target.files[0]; if(!f) return;
+    const r=new FileReader(); r.onload=ev=>setImage(ev.target.result); r.readAsDataURL(f);
+  });
+  $('resetBtn').addEventListener('click',()=>{
+    if(wrap){wrap.remove(); wrap=handle=rotH=null; imgSrc=srcImg=null;}
+    placeholder.style.display='flex';
+  });
+  function setImage(src){
+    const probe=new Image();
+    probe.onload=()=>{
+      aspect=probe.naturalWidth/probe.naturalHeight; imgSrc=src; srcImg=probe;
+      placeholder.style.display='none';
+      if(wrap) wrap.remove();
+      wrap=document.createElement('div'); wrap.className='imgwrap';
+      const im=document.createElement('img'); im.src=src; im.draggable=false;
+      handle=document.createElement('div'); handle.className='handle';
+      rotH=document.createElement('div'); rotH.className='rot';
+      wrap.appendChild(im); wrap.appendChild(handle); wrap.appendChild(rotH);
+      stage.insertBefore(wrap,grid);
+      let wPx=stageW, hPx=wPx/aspect;
+      if(hPx>stageH){hPx=stageH; wPx=hPx*aspect;}
+      st.w=wPx/stageW*100; st.h=hPx/stageH*100; st.x=(100-st.w)/2; st.y=(100-st.h)/2; st.r=0;
+      apply();
+      wrap.addEventListener('pointerdown',startMove);
+      handle.addEventListener('pointerdown',startResize);
+      rotH.addEventListener('pointerdown',startRotate);
+    };
+    probe.src=src;
+  }
+  function apply(){
+    if(!wrap) return;
+    wrap.style.left=st.x+'%'; wrap.style.top=st.y+'%';
+    wrap.style.width=st.w+'%'; wrap.style.height=st.h+'%';
+    wrap.style.transform='rotate('+st.r+'deg)';
+    $('rotRange').value=Math.round(st.r); $('rotVal').textContent=Math.round(st.r)+'°';
+  }
+  function startMove(e){
+    if(e.target===handle||e.target===rotH) return;
+    e.preventDefault(); wrap.setPointerCapture(e.pointerId);
+    drag={t:'move',x:e.clientX,y:e.clientY,s:{...st}};
+    wrap.onpointermove=onDrag; wrap.onpointerup=endDrag;
+  }
+  function startResize(e){
+    e.preventDefault(); e.stopPropagation(); handle.setPointerCapture(e.pointerId);
+    drag={t:'resize',x:e.clientX,y:e.clientY,s:{...st}};
+    handle.onpointermove=onDrag; handle.onpointerup=endDrag;
+  }
+  function startRotate(e){
+    e.preventDefault(); e.stopPropagation(); rotH.setPointerCapture(e.pointerId);
+    drag={t:'rotate',s:{...st}};
+    rotH.onpointermove=onDrag; rotH.onpointerup=endDrag;
+  }
+  function onDrag(e){
+    if(!drag) return;
+    if(drag.t==='move'){
+      st.x=drag.s.x+(e.clientX-drag.x)/stageW*100;
+      st.y=drag.s.y+(e.clientY-drag.y)/stageH*100;
+    } else if(drag.t==='rotate'){
+      const r=wrap.getBoundingClientRect();
+      let a=Math.atan2(e.clientY-(r.top+r.height/2),e.clientX-(r.left+r.width/2))*180/Math.PI+90;
+      if(a>180) a-=360;
+      if(e.shiftKey) a=Math.round(a/15)*15;
+      st.r=a;
+    } else {
+      const rad=-drag.s.r*Math.PI/180, cs=Math.cos(rad), sn=Math.sin(rad);
+      const dx=e.clientX-drag.x, dy=e.clientY-drag.y;
+      const ldx=dx*cs-dy*sn, ldy=dx*sn+dy*cs;
+      const w0=drag.s.w*stageW/100, h0=drag.s.h*stageH/100;
+      let w,h;
+      if(lock.checked){
+        const sc=Math.max(0.02,1+(ldx/(w0/2)+ldy/(h0/2))/2);
+        w=w0*sc; h=h0*sc;
+      } else {
+        w=Math.max(stageW*0.02,w0+2*ldx); h=Math.max(stageH*0.02,h0+2*ldy);
+      }
+      const cxp=(drag.s.x+drag.s.w/2)/100*stageW, cyp=(drag.s.y+drag.s.h/2)/100*stageH;
+      st.w=w/stageW*100; st.h=h/stageH*100;
+      st.x=(cxp-w/2)/stageW*100; st.y=(cyp-h/2)/stageH*100;
+    }
+    apply();
+  }
+  function endDrag(){drag=null; [wrap,handle,rotH].forEach(el=>{if(el){el.onpointermove=null; el.onpointerup=null;}});}
+  $('rotRange').addEventListener('input',e=>{st.r=+e.target.value; apply();});
+  $('rot90').addEventListener('click',()=>{let r=Math.round(st.r)+90; if(r>180) r-=360; st.r=r; apply();});
+
+  $('matchBtn').addEventListener('click',()=>{
+    if(!wrap) return;
+    const n=parseFloat($('imgCells').value); if(!(n>0)) return;
+    const cx=st.x+st.w/2, cy=st.y+st.h/2;
+    const w=n/mode.cols*100, h=((w*stageW/100)/aspect)/stageH*100;
+    st.w=w; st.h=h; st.x=cx-w/2; st.y=cy-h/2; apply();
+  });
+
+  document.addEventListener('keydown',e=>{
+    if(!wrap||e.key.indexOf('Arrow')!==0) return;
+    const t=e.target;
+    if(t.tagName==='SELECT'||(t.tagName==='INPUT'&&['range','number','text','color'].indexOf(t.type)>=0)) return;
+    const step=e.shiftKey?10:1;
+    if(e.key==='ArrowLeft') st.x-=step/stageW*100;
+    if(e.key==='ArrowRight') st.x+=step/stageW*100;
+    if(e.key==='ArrowUp') st.y-=step/stageH*100;
+    if(e.key==='ArrowDown') st.y+=step/stageH*100;
+    e.preventDefault(); apply();
+  });
+
+  /* ---------- print ---------- */
+  function sheetLabel(px,py){
+    const n=py*mode.pagesX+px+1, total=mode.pagesX*mode.pagesY;
+    return 'Sheet '+n+' of '+total+'  ·  row '+(py+1)+', col '+(px+1);
+  }
+  function buildPrint(){
+    printArea.innerHTML='';
+    const g=geom(), s=gridStyle();
+    for(let py=0;py<mode.pagesY;py++){
+      for(let px=0;px<mode.pagesX;px++){
+        const page=document.createElement('div'); page.className='page';
+        page.style.width=PAGE_W+'mm'; page.style.height=PAGE_H+'mm';
+        const cell=document.createElement('div');
+        cell.style.cssText='position:absolute;overflow:hidden;left:'+g.offX+'mm;top:'+g.offY+'mm;width:'+g.cellW+'mm;height:'+g.cellH+'mm;';
+        const inner=document.createElement('div'); inner.className='inner';
+        inner.style.width=g.fullW+'mm'; inner.style.height=g.fullH+'mm';
+        inner.style.transform='translate('+(-px*g.cellW)+'mm,'+(-py*g.cellH)+'mm)';
+        if(imgSrc){
+          const c=document.createElement('img'); c.src=imgSrc;
+          c.style.transform='rotate('+st.r+'deg)';
+          c.style.left=st.x+'%'; c.style.top=st.y+'%'; c.style.width=st.w+'%'; c.style.height=st.h+'%';
+          inner.appendChild(c);
+        }
+        if($('showGrid').checked){
+          const gl=document.createElement('div'); gl.className='gridlines';
+          gl.style.cssText='position:absolute;inset:0;';
+          gl.innerHTML=gridSVG(s.thick/g.sq);
+          inner.appendChild(gl);
+        }
+        cell.appendChild(inner); page.appendChild(cell);
+        marks(g).forEach(([x1,y1,x2,y2])=>{
+          const m=document.createElement('div'), t=0.3;
+          m.style.cssText='position:absolute;background:#000;left:'+(Math.min(x1,x2)-(x1===x2?t/2:0))+'mm;top:'+(Math.min(y1,y2)-(y1===y2?t/2:0))+
+            'mm;width:'+(x1===x2?t:Math.abs(x2-x1))+'mm;height:'+(y1===y2?t:Math.abs(y2-y1))+'mm;';
+          page.appendChild(m);
+        });
+        if($('sheetLabels').checked && g.offY>=3.6){
+          const lb=document.createElement('div');
+          lb.textContent=sheetLabel(px,py);
+          lb.style.cssText='position:absolute;white-space:nowrap;color:#000;font:2.4mm/1 sans-serif;left:'+g.offX+'mm;top:'+(g.offY-3.4)+'mm;';
+          page.appendChild(lb);
+        }
+        printArea.appendChild(page);
+      }
+    }
+  }
+  window.addEventListener('beforeprint',buildPrint);
+  $('printBtn').addEventListener('click',()=>{buildPrint(); window.print();});
+
+  /* ---------- PDF ---------- */
+  $('pdfBtn').addEventListener('click',async()=>{
+    const status=$('status'), btn=$('pdfBtn');
+    btn.disabled=true;
+    try{
+      const {jsPDF}=window.jspdf;
+      const DPI=300, ppm=DPI/25.4;
+      const cw=Math.round(PAGE_W*ppm), ch=Math.round(PAGE_H*ppm);
+      const g=geom(), s=gridStyle(), SQ=g.sq, fullW=g.fullW, fullH=g.fullH;
+      const pdf=new jsPDF({orientation:'landscape',unit:'mm',format:[PAGE_W,PAGE_H],compress:true});
+      const cv=document.createElement('canvas'); cv.width=cw; cv.height=ch;
+      const ctx=cv.getContext('2d');
+      const total=mode.pagesX*mode.pagesY; let n=0;
+      const paths=$('showGrid').checked?gridPaths(0,0,mode.cols,mode.rows,s.hex):[];
+      for(let py=0;py<mode.pagesY;py++){
+        for(let px=0;px<mode.pagesX;px++){
+          n++; status.textContent='Rendering page '+n+' of '+total+'…';
+          await new Promise(r=>setTimeout(r,30));
+          const ox=px*g.cellW-g.offX, oy=py*g.cellH-g.offY;
+          ctx.setTransform(1,0,0,1,0,0);
+          ctx.fillStyle='#fff'; ctx.fillRect(0,0,cw,ch);
+          ctx.save();
+          ctx.beginPath(); ctx.rect(g.offX*ppm,g.offY*ppm,g.cellW*ppm,g.cellH*ppm); ctx.clip();
+          if(srcImg){
+            ctx.imageSmoothingQuality='high';
+            const iw=st.w/100*fullW*ppm, ih=st.h/100*fullH*ppm;
+            const icx=((st.x+st.w/2)/100*fullW-ox)*ppm, icy=((st.y+st.h/2)/100*fullH-oy)*ppm;
+            ctx.translate(icx,icy); ctx.rotate(st.r*Math.PI/180);
+            ctx.drawImage(srcImg,-iw/2,-ih/2,iw,ih);
+            ctx.setTransform(1,0,0,1,0,0);
+          }
+          if(paths.length){
+            ctx.strokeStyle='rgba('+s.rgb.join(',')+','+s.a+')';
+            ctx.lineWidth=Math.max(1,s.thick*ppm);
+            ctx.setLineDash(s.dash?[0.2*SQ*ppm,0.1333*SQ*ppm]:[]);
+            ctx.beginPath();
+            paths.forEach(p=>p.forEach((q,i)=>{
+              const X=(q[0]*SQ-ox)*ppm, Y=(q[1]*SQ-oy)*ppm;
+              if(i) ctx.lineTo(X,Y); else ctx.moveTo(X,Y);
+            }));
+            ctx.stroke(); ctx.setLineDash([]);
+          }
+          ctx.restore();
+          ctx.strokeStyle='#000'; ctx.lineWidth=Math.max(2,0.3*ppm); ctx.beginPath();
+          marks(g).forEach(([x1,y1,x2,y2])=>{ctx.moveTo(x1*ppm,y1*ppm); ctx.lineTo(x2*ppm,y2*ppm);});
+          ctx.stroke();
+          if($('sheetLabels').checked && g.offY>=3.6){
+            ctx.fillStyle='#000'; ctx.font=(2.4*ppm)+'px sans-serif'; ctx.textBaseline='top';
+            ctx.fillText(sheetLabel(px,py),g.offX*ppm,(g.offY-3.4)*ppm);
+          }
+          if(n>1) pdf.addPage([PAGE_W,PAGE_H],'landscape');
+          pdf.addImage(cv.toDataURL('image/jpeg',0.95),'JPEG',0,0,PAGE_W,PAGE_H);
+        }
+      }
+      pdf.save('battlemap-'+total+'x'+(mode.paper==='tab'?'Tabloid':'A3')+'.pdf');
+      status.textContent='Done — PDF saved ('+total+' pages). Print at 100% / "Actual size".';
+    }catch(err){ status.textContent='PDF failed: '+err.message; }
+    btn.disabled=false;
+  });
+
+  layout();
+})();
+</script>
+</body>
+</html>
