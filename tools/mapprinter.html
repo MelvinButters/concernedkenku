@@ -4,11 +4,198 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Map Printer – Concerned Kenku</title>
-<link rel="icon" href="../assets/kenkutrim.png">
+<link rel="icon" href="../assets/Kenku.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Pixelify+Sans:wght@500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../assets/mapprinter.css">
+<style>
+:root {
+  --bg: #e6edee;
+  --surface: #f6f9f9;
+  --ink: #16222b;
+  --muted: #4d5f69;
+  --teal: #1f7f82;
+  --teal-dark: #155a5d;
+  --line: #16222b;
+  --stage: #cfd8da;
+  --work: #d5dee0;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #131c22;
+    --surface: #1b2830;
+    --ink: #e4eef0;
+    --muted: #9fb2ba;
+    --teal: #4cc3c3;
+    --teal-dark: #7fdada;
+    --line: #4cc3c3;
+    --stage: #2a3b44;
+    --work: #0f161b;
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+:focus-visible { outline: 3px solid var(--teal); outline-offset: 2px; }
+
+/* Header */
+.site-header { padding: 1rem 1.25rem; border-bottom: 3px solid var(--line); }
+.site-header .inner {
+  max-width: 78rem; margin: 0 auto;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+}
+.brand {
+  display: flex; align-items: center; gap: 0.7rem;
+  color: inherit; text-decoration: none;
+  font-family: "Pixelify Sans", "Courier New", monospace;
+  font-size: 1.2rem; font-weight: 600;
+}
+.brand img { height: 44px; width: auto; max-width: 44px; object-fit: contain; display: block; }
+.back { font-weight: 700; color: var(--teal-dark); text-decoration: none; }
+.back:hover { text-decoration: underline; }
+
+main { max-width: 78rem; margin: 0 auto; padding: 1.75rem 1.25rem 3rem; }
+
+h1 {
+  margin: 0 0 0.4rem;
+  font-family: "Pixelify Sans", "Courier New", monospace;
+  font-size: clamp(2rem, 6vw, 3rem);
+  line-height: 1.05; font-weight: 600;
+}
+.sub { margin: 0 0 1.5rem; max-width: 40rem; color: var(--muted); font-size: 1.1rem; }
+
+/* Control groups */
+.controls { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); }
+
+.panel {
+  background: var(--surface);
+  border: 2px solid var(--line);
+  box-shadow: 4px 4px 0 var(--line);
+  padding: 0.9rem 1.1rem 1.1rem;
+  display: flex; flex-direction: column; gap: 0.6rem;
+}
+.panel h2 {
+  margin: 0;
+  font-family: "Pixelify Sans", "Courier New", monospace;
+  font-size: 1.25rem; font-weight: 600; color: var(--teal-dark);
+}
+.panel h2 small {
+  display: block; margin-top: 0.1rem;
+  font-family: "Atkinson Hyperlegible", system-ui, sans-serif;
+  font-size: 0.85rem; font-weight: 400; color: var(--muted);
+}
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; }
+.panel label, .panel .inl { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.95rem; cursor: pointer; }
+.panel .inl { cursor: default; flex-wrap: wrap; }
+
+input[type=checkbox] { accent-color: var(--teal); width: 1.05rem; height: 1.05rem; }
+input[type=range] { accent-color: var(--teal); }
+input[type=color] { width: 2.2rem; height: 1.8rem; border: 2px solid var(--line); background: var(--surface); padding: 0; }
+
+select, input.n {
+  background: var(--surface); color: var(--ink);
+  border: 2px solid var(--line); border-radius: 0;
+  padding: 0.25rem 0.4rem; font: inherit;
+}
+input.n { width: 4.2rem; }
+
+input[type=file] { font: inherit; color: var(--muted); max-width: 100%; }
+input[type=file]::file-selector-button {
+  font: inherit; font-weight: 700; color: var(--ink);
+  background: var(--surface); border: 2px solid var(--line);
+  padding: 0.4rem 0.8rem; margin-right: 0.7rem; cursor: pointer;
+  box-shadow: 3px 3px 0 var(--line);
+}
+
+button {
+  font: inherit; font-weight: 700; cursor: pointer;
+  padding: 0.45rem 0.9rem;
+  color: var(--bg); background: var(--teal-dark);
+  border: 2px solid var(--line); border-radius: 0;
+  box-shadow: 3px 3px 0 var(--line);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+button:hover:not(:disabled) { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--line); }
+button.secondary { color: var(--ink); background: var(--surface); }
+button:disabled { opacity: 0.6; cursor: wait; }
+
+.info { font-size: 0.85rem; color: var(--muted); margin: 0.9rem 0 0; }
+#status:empty { display: none; }
+
+/* Workspace */
+#work {
+  overflow: auto; scrollbar-gutter: stable both-edges;
+  background: var(--work);
+  border: 2px solid var(--line);
+  padding: 140px; max-height: 74vh; margin-top: 1rem;
+}
+#stage {
+  position: relative; margin: 0 auto; flex: none;
+  background: var(--stage);
+  outline: 3px solid var(--teal);
+  touch-action: none;
+}
+.gridlines, .split { position: absolute; inset: 0; pointer-events: none; }
+.gridlines { z-index: 5; }
+.split { z-index: 7; }
+.gridlines svg { display: block; width: 100%; height: 100%; }
+.split .vl { position: absolute; top: 0; bottom: 0; width: 0; border-left: 2px dashed #2aa8ff; }
+.split .hl { position: absolute; left: 0; right: 0; height: 0; border-top: 2px dashed #2aa8ff; }
+.split .lbl { position: absolute; padding: 2px 7px; background: rgba(42,168,255,.9); color: #fff; font-size: 11px; }
+
+.imgwrap { position: absolute; cursor: grab; touch-action: none; outline: 1px dashed rgba(22,34,43,.7); z-index: 1; transform-origin: 50% 50%; }
+.imgwrap:active { cursor: grabbing; }
+.imgwrap img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; user-select: none; }
+.handle {
+  position: absolute; width: 20px; height: 20px; right: -10px; bottom: -10px;
+  background: var(--teal); border: 2px solid var(--line);
+  cursor: nwse-resize; touch-action: none; z-index: 6;
+}
+.rot {
+  position: absolute; left: 50%; top: -38px; width: 18px; height: 18px; margin-left: -9px;
+  background: var(--surface); border: 2px solid var(--line); border-radius: 50%;
+  cursor: grab; touch-action: none; z-index: 6;
+}
+.rot::after { content: ""; position: absolute; left: 50%; top: 100%; width: 2px; height: 18px; margin-left: -1px; background: var(--line); }
+.placeholder {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  color: var(--muted); font-size: 1rem; text-align: center; padding: 20px; pointer-events: none;
+}
+
+@media (max-width: 30rem) {
+  .brand span { font-size: 1rem; }
+  main { padding-top: 1.25rem; }
+  #work { padding: 60px; }
+}
+
+@media (prefers-reduced-motion: reduce) { button { transition: none; } }
+
+/* Printing: only the sheets print */
+#printArea { display: none; }
+@media print {
+  body * { visibility: hidden !important; }
+  #printArea, #printArea * { visibility: visible !important; }
+  #printArea { display: block !important; position: absolute; top: 0; left: 0; margin: 0; padding: 0; }
+  .page { position: relative; overflow: hidden; background: #fff; page-break-after: always; break-after: page; }
+  .page:last-child { page-break-after: auto; break-after: auto; }
+  .page .inner { position: absolute; top: 0; left: 0; overflow: visible; background: #fff; }
+  .page .inner img { position: absolute; }
+  .page .gridlines svg { display: block; width: 100%; height: 100%; }
+}
+
+</style>
 <style id="pageStyle"></style>
 </head>
 <body>
@@ -16,7 +203,7 @@
 <header class="site-header">
   <div class="inner">
     <a class="brand" href="../index.html">
-      <img src="../assets/kenkutrim.png" alt="">
+      <img src="../assets/Kenku.png" alt="">
       <span>Concerned Kenku</span>
     </a>
     <a class="back" href="../index.html">All tools</a>
@@ -104,7 +291,7 @@
 </main>
 <div id="printArea"></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 (function(){
   let PAGE_W=420, PAGE_H=297; // landscape sheet size in mm (set by paperDims)
@@ -405,6 +592,7 @@
     const status=$('status'), btn=$('pdfBtn');
     btn.disabled=true;
     try{
+      if(!window.jspdf) throw new Error('the PDF library did not load - check your internet connection and refresh');
       const {jsPDF}=window.jspdf;
       const DPI=300, ppm=DPI/25.4;
       const cw=Math.round(PAGE_W*ppm), ch=Math.round(PAGE_H*ppm);
