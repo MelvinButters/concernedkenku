@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Magic Item Cards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#241a12; --parchment:#ece1c8; --parchment-2:#ddd0a9;
+    --gold:#9c7a3c; --gold-light:#c9a86a; --void:#060606;
+    --page-bg:#e7e2d8; --page-fg:#2a241c; --panel:#fdfbf6;
+    padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){ --page-bg:#17140f; --page-fg:#ece4d4; --panel:#221c15; }
+  }
+  :root[data-theme="dark"]{ --page-bg:#17140f; --page-fg:#ece4d4; --panel:#221c15; }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0; min-height:100%; background:var(--page-bg); color:var(--page-fg);
+    font-family:'EB Garamond', Georgia, serif;
+    display:flex; flex-direction:column; align-items:center; gap:16px;
+    padding:26px 16px 50px;
+  }
+  h1{ font-family:'Cinzel', Georgia, serif; font-weight:700; font-size:1.15rem; margin:0; }
+  .sub{ font-size:.92rem; opacity:.72; text-align:center; max-width:520px; margin:-6px 0 2px; }
+  .toolbar{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; position:sticky; top:0; z-index:5; }
+  .btn{
+    font-family:'EB Garamond', serif; font-size:.95rem; padding:8px 16px; border-radius:3px;
+    border:1px solid var(--gold); background:var(--panel); color:var(--page-fg); cursor:pointer;
+  }
+  .btn:hover{ background:var(--gold-light); color:#1a1409; }
+  .hint{ font-size:.82rem; opacity:.6; text-align:center; max-width:480px; }
+  body.capturing .art-remove, body.capturing .removeCard{ display:none !important; }
+
+  .cards-grid{
+    display:flex; flex-wrap:wrap; gap:22px; justify-content:center; max-width:1000px;
+  }
+  .stage{ perspective:1400px; width:230px; aspect-ratio:63.5/88.9; position:relative; }
+  .removeCard{
+    position:absolute; top:-10px; right:-10px; z-index:3; width:24px; height:24px; border-radius:50%;
+    border:1px solid var(--gold); background:var(--panel); color:var(--page-fg); cursor:pointer; font-size:.85rem; line-height:1;
+  }
+  .card{
+    position:relative; width:100%; height:100%; transform-style:preserve-3d;
+    transition:transform .6s cubic-bezier(.4,.2,.2,1); cursor:pointer;
+  }
+  .card.flipped{ transform:rotateY(180deg); }
+  .face{ position:absolute; inset:0; backface-visibility:hidden; border-radius:9px; box-shadow:0 8px 20px rgba(0,0,0,.32); display:flex; flex-direction:column; overflow:hidden; }
+
+  .front{ background:radial-gradient(120% 90% at 50% -10%, var(--parchment-2), var(--parchment) 60%); border:1.5px solid var(--gold); padding:8px; color:var(--ink); }
+  .frame{ position:absolute; inset:4px; border:1px solid var(--gold-light); border-radius:6px; pointer-events:none; }
+
+  .art-box{ position:relative; flex:0 0 38%; border-radius:4px; border:1px solid var(--gold);
+    background:repeating-linear-gradient(135deg,#d8cba4,#d8cba4 6px,#cfc198 6px,#cfc198 12px);
+    display:flex; align-items:center; justify-content:center; overflow:hidden; cursor:pointer; }
+  .art-box img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .art-hint{ font-size:.62rem; text-align:center; color:#5b4a2e; opacity:.85; padding:0 6px; line-height:1.25; }
+  .art-box.filled .art-hint{ display:none; }
+  .art-remove{ position:absolute; top:3px; right:3px; background:rgba(20,14,8,.65); color:#fdfbf6;
+    border:none; border-radius:50%; width:18px; height:18px; font-size:.68rem; cursor:pointer; display:none; }
+  .art-box.filled .art-remove{ display:block; }
+
+  .title-box{ flex:0 0 auto; margin-top:6px; text-align:center; font-family:'Cinzel', Georgia, serif; font-weight:700; color:#4a3418; outline:none; overflow:hidden; max-height:2.5em; line-height:1.15; overflow-wrap:anywhere; word-break:break-word; }
+  .desc-box{ flex:1 1 auto; margin-top:5px; outline:none; overflow:hidden; font-style:italic; color:#3a2c18; line-height:1.28; padding:0 1px; overflow-wrap:anywhere; word-break:break-word; }
+  [contenteditable]:empty:before{ content:attr(data-placeholder); opacity:.55; font-style:normal; }
+
+  .back{ background:var(--void); transform:rotateY(180deg); align-items:center; justify-content:center; border:1.5px solid #111; }
+  .back-mark{ width:32%; opacity:.5; }
+  .back-mark path{ stroke:#3a3a3a; fill:none; stroke-width:1.2; }
+
+  @media print{
+    @page{ size:A4; margin:10mm; }
+    body{ background:#fff; padding:0; gap:0; color:#000; }
+    h1,.sub,.toolbar,.hint,.removeCard,.art-remove{ display:none !important; }
+    .cards-grid{ display:grid; grid-template-columns:repeat(3, 63.5mm); grid-auto-rows:88.9mm; gap:0; justify-content:center; max-width:none; }
+    .stage{ width:63.5mm; aspect-ratio:auto; }
+    .stage:nth-child(9n){ break-after:page; }
+    .card{ transform:none !important; }
+    .back{ display:none; }
+    .front{ box-shadow:none; border-radius:0; }
+  }
+</style>
+</head>
+<body>
+  <h1>Magic Item Cards</h1>
+  <p class="sub">Each card fits a standard sleeve (63.5 × 88.9 mm) — 9 print per A4 sheet, 3 columns × 3 rows. Click a card to flip between its black back and the item face.</p>
+  <div class="toolbar">
+    <button class="btn" id="addBtn">Add card</button>
+    <button class="btn" id="exportBtn">Export to PDF</button>
+  </div>
+  <p class="hint">Click a card's art box to upload a photo, or click a card then paste (Ctrl/Cmd+V) an image anywhere on the page — it fills whichever card you last clicked.</p>
+  <p class="hint"><strong>Export to PDF</strong> lays every card out 3×3 (9 per A4 page) at exact sleeve size (63.5 × 88.9 mm) and downloads a print-ready file — no browser print settings to fuss with.</p>
+
+  <div class="cards-grid" id="grid"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+  const grid = document.getElementById('grid');
+  let activeStage = null;
+
+  function fitText(el, max, min){
+    let size = max;
+    el.style.fontSize = size + 'px';
+    let guard = 60;
+    while(el.scrollHeight > el.clientHeight + 1 && size > min && guard-- > 0){
+      size -= 1; el.style.fontSize = size + 'px';
+    }
+  }
+
+  function createCard(){
+    const stage = document.createElement('div');
+    stage.className = 'stage';
+    stage.innerHTML = `
+      <button class="removeCard" title="Remove card">✕</button>
+      <div class="card">
+        <div class="face front">
+          <div class="frame"></div>
+          <div class="art-box">
+            <span class="art-hint">Click to upload, or click here then paste an image</span>
+            <img alt="" style="display:none;">
+            <button class="art-remove" title="Remove image">✕</button>
+          </div>
+          <div class="title-box" contenteditable="true" data-placeholder="Item Name"></div>
+          <div class="desc-box" contenteditable="true" data-placeholder="Describe the item…"></div>
+        </div>
+        <div class="face back">
+          <svg class="back-mark" viewBox="0 0 100 100"><path d="M50 6 L94 50 L50 94 L6 50 Z M50 24 L76 50 L50 76 L24 50 Z"/></svg>
+        </div>
+      </div>`;
+
+    const card = stage.querySelector('.card');
+    const artBox = stage.querySelector('.art-box');
+    const artImg = artBox.querySelector('img');
+    const artRemove = artBox.querySelector('.art-remove');
+    const titleBox = stage.querySelector('.title-box');
+    const descBox = stage.querySelector('.desc-box');
+    const removeCardBtn = stage.querySelector('.removeCard');
+
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file'; fileInput.accept = 'image/*'; fileInput.style.display = 'none';
+    stage.appendChild(fileInput);
+
+    function setImage(dataUrl){ artImg.src = dataUrl; artImg.style.display = 'block'; artBox.classList.add('filled'); }
+    function readFile(file){
+      if(!file || !file.type.startsWith('image/')) return;
+      const reader = new FileReader();
+      reader.onload = ()=> setImage(reader.result);
+      reader.readAsDataURL(file);
+    }
+
+    stage.addEventListener('click', ()=>{ activeStage = stage; });
+    card.addEventListener('click', (e)=>{
+      if(e.target.closest('.art-box') || e.target === titleBox || e.target === descBox) return;
+      card.classList.toggle('flipped');
+    });
+    artBox.addEventListener('click', ()=> fileInput.click());
+    artBox.addEventListener('dragover', e=> e.preventDefault());
+    artBox.addEventListener('drop', e=>{ e.preventDefault(); readFile(e.dataTransfer.files[0]); });
+    fileInput.addEventListener('change', ()=> readFile(fileInput.files[0]));
+    artRemove.addEventListener('click', e=>{
+      e.stopPropagation();
+      artImg.src=''; artImg.style.display='none'; artBox.classList.remove('filled');
+    });
+    removeCardBtn.addEventListener('click', e=>{
+      e.stopPropagation();
+      if(activeStage === stage) activeStage = null;
+      stage.remove();
+    });
+
+    function fitTitle(){ fitText(titleBox, 26, 9); }
+    function fitDesc(){ fitText(descBox, 18, 8); }
+    titleBox.addEventListener('input', fitTitle);
+    descBox.addEventListener('input', fitDesc);
+    titleBox.addEventListener('paste', ()=> setTimeout(fitTitle, 0));
+    descBox.addEventListener('paste', ()=> setTimeout(fitDesc, 0));
+    titleBox.style.fontSize = '26px';
+    descBox.style.fontSize = '18px';
+
+    stage._setImage = setImage;
+    return stage;
+  }
+
+  document.getElementById('addBtn').addEventListener('click', ()=>{
+    const c = createCard();
+    grid.appendChild(c);
+    activeStage = c;
+  });
+
+  async function exportPDF(){
+    const stages = Array.from(grid.querySelectorAll('.stage'));
+    if(stages.length === 0) return;
+    const exportBtn = document.getElementById('exportBtn');
+    const oldLabel = exportBtn.textContent;
+    exportBtn.textContent = 'Exporting…';
+    exportBtn.disabled = true;
+    document.body.classList.add('capturing');
+
+    const flippedStates = stages.map(s => s.querySelector('.card').classList.contains('flipped'));
+    stages.forEach(s => s.querySelector('.card').classList.remove('flipped'));
+    await new Promise(r => setTimeout(r, 60)); // let layout settle
+
+    try{
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit:'mm', format:'a4' });
+      const cardW = 63.5, cardH = 88.9, cols = 3, rows = 3;
+      const marginX = (210 - cardW*cols)/2, marginY = (297 - cardH*rows)/2;
+
+      for(let i=0; i<stages.length; i++){
+        const front = stages[i].querySelector('.front');
+        const canvas = await html2canvas(front, { scale:3, backgroundColor:'#ffffff' });
+        const img = canvas.toDataURL('image/png');
+        const posInPage = i % 9;
+        if(i > 0 && posInPage === 0) doc.addPage();
+        const col = posInPage % cols;
+        const row = Math.floor(posInPage / cols);
+        doc.addImage(img, 'PNG', marginX + col*cardW, marginY + row*cardH, cardW, cardH);
+      }
+      doc.save('magic-item-cards.pdf');
+    } catch(err){
+      alert('Export failed: ' + err.message + '\n\nMake sure you have an internet connection (this needs to load a couple of small libraries the first time).');
+    }
+
+    stages.forEach((s,i) => { if(flippedStates[i]) s.querySelector('.card').classList.add('flipped'); });
+    document.body.classList.remove('capturing');
+    exportBtn.textContent = oldLabel;
+    exportBtn.disabled = false;
+  }
+  document.getElementById('exportBtn').addEventListener('click', exportPDF);
+  document.addEventListener('paste', e=>{
+    if(!activeStage) return;
+    const items = e.clipboardData && e.clipboardData.items;
+    if(!items) return;
+    for(const item of items){
+      if(item.type.startsWith('image/')){
+        const file = item.getAsFile();
+        const reader = new FileReader();
+        reader.onload = ()=> activeStage._setImage(reader.result);
+        reader.readAsDataURL(file);
+        activeStage.querySelector('.card').classList.remove('flipped');
+        break;
+      }
+    }
+  });
+
+  // start with 3 cards
+  for(let i=0;i<3;i++) grid.appendChild(createCard());
+  activeStage = grid.firstElementChild;
+</script>
+</body>
+</html>
