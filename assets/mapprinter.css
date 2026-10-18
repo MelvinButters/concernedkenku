@@ -1,0 +1,90 @@
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="../index.html">
+      <img src="../assets/Kenku.png" alt="">
+      <span>Concerned Kenku</span>
+    </a>
+    <a class="back" href="../index.html">All tools</a>
+  </div>
+</header>
+
+<main>
+<h1>Map Printer</h1>
+<p class="sub">Upload a map, drag it into place, then print it across several sheets at tabletop scale. Drag the corner square to resize and the round handle to rotate. Only the grid area prints.</p>
+
+<div class="controls">
+
+<section class="panel">
+  <h2>File and output<small>Upload your map, then print or save a PDF</small></h2>
+  <div class="row"><input type="file" id="fileInput" accept="image/*"></div>
+  <div class="row">
+    <button id="printBtn">Print</button>
+    <button id="pdfBtn">Download PDF</button>
+    <button class="secondary" id="resetBtn">Remove image</button>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>Layout<small>Grid size, sheets and cut margins</small></h2>
+  <div class="row">
+    <label><input type="checkbox" id="mode2" checked> 2×A3</label>
+    <label><input type="checkbox" id="mode4"> 4×A3</label>
+    <label><input type="checkbox" id="modeT2"> 2×Tabloid</label>
+    <label><input type="checkbox" id="modeT4"> 4×Tabloid</label>
+    <label><input type="checkbox" id="modeC"> Custom</label>
+  </div>
+  <div class="row inl" id="customFields" style="display:none">
+    Paper <select id="cPaper"><option value="a3">A3</option><option value="tab">Tabloid</option></select>
+    Cols <input class="n" type="number" id="cCols" value="20" min="1" max="100">
+    Rows <input class="n" type="number" id="cRows" value="20" min="1" max="100">
+    Sheets across <input class="n" type="number" id="cAcross" value="2" min="1" max="8">
+    down <input class="n" type="number" id="cDown" value="2" min="1" max="8">
+  </div>
+  <div class="row">
+    <label>Cut margin <input class="n" type="number" id="margin" min="0" max="15" step="0.5" value="5"> mm</label>
+    <label><input type="checkbox" id="sheetLabels" checked> Sheet labels</label>
+    <label><input type="checkbox" id="showSplit"> Preview split</label>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>Grid<small>How the grid lines look</small></h2>
+  <div class="row">
+    <label>Type <select id="gridType"><option value="square">Square</option><option value="hex">Hex</option></select></label>
+    <label><input type="checkbox" id="showGrid" checked> Include in print/PDF</label>
+    <label><input type="checkbox" id="gridDash"> Dashed</label>
+  </div>
+  <div class="row">
+    <label>Colour <input type="color" id="gridColor" value="#ff3c3c"></label>
+    <label>Opacity <input type="range" id="gridAlpha" min="5" max="100" value="80"> <span id="gridAlphaVal">80%</span></label>
+    <label>Thickness <input type="range" id="gridThick" min="0.1" max="1.5" step="0.05" value="0.4"> <span id="gridThickVal">0.40mm</span></label>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>Image<small>Size, rotation and alignment. Arrow keys nudge, Shift moves 10×</small></h2>
+  <div class="row">
+    <label><input type="checkbox" id="lockAspect" checked> Lock aspect</label>
+    <label>Rotate <input type="range" id="rotRange" min="-180" max="180" step="1" value="0"> <span id="rotVal">0°</span></label>
+    <button class="secondary" id="rot90">Rotate 90°</button>
+  </div>
+  <div class="row inl">
+    Image is <input class="n" type="number" id="imgCells" value="30" min="1" step="0.5"> cells wide
+    <button class="secondary" id="matchBtn">Match grid</button>
+  </div>
+</section>
+
+</div>
+
+<div class="info" id="info"></div>
+<div class="info" id="status"></div>
+
+<div id="work">
+  <div id="stage">
+    <div class="placeholder" id="placeholder">Upload an image to get started</div>
+    <div class="gridlines" id="grid"></div>
+    <div class="split" id="split"></div>
+  </div>
+</div>
+</main>
+<div id="printArea"></div>
