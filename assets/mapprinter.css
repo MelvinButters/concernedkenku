@@ -1,90 +1,185 @@
-<header class="site-header">
-  <div class="inner">
-    <a class="brand" href="../index.html">
-      <img src="../assets/Kenku.png" alt="">
-      <span>Concerned Kenku</span>
-    </a>
-    <a class="back" href="../index.html">All tools</a>
-  </div>
-</header>
+:root {
+  --bg: #e6edee;
+  --surface: #f6f9f9;
+  --ink: #16222b;
+  --muted: #4d5f69;
+  --teal: #1f7f82;
+  --teal-dark: #155a5d;
+  --line: #16222b;
+  --stage: #cfd8da;
+  --work: #d5dee0;
+  color-scheme: light;
+}
 
-<main>
-<h1>Map Printer</h1>
-<p class="sub">Upload a map, drag it into place, then print it across several sheets at tabletop scale. Drag the corner square to resize and the round handle to rotate. Only the grid area prints.</p>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #131c22;
+    --surface: #1b2830;
+    --ink: #e4eef0;
+    --muted: #9fb2ba;
+    --teal: #4cc3c3;
+    --teal-dark: #7fdada;
+    --line: #4cc3c3;
+    --stage: #2a3b44;
+    --work: #0f161b;
+    color-scheme: dark;
+  }
+}
 
-<div class="controls">
+* { box-sizing: border-box; }
 
-<section class="panel">
-  <h2>File and output<small>Upload your map, then print or save a PDF</small></h2>
-  <div class="row"><input type="file" id="fileInput" accept="image/*"></div>
-  <div class="row">
-    <button id="printBtn">Print</button>
-    <button id="pdfBtn">Download PDF</button>
-    <button class="secondary" id="resetBtn">Remove image</button>
-  </div>
-</section>
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 1rem;
+  line-height: 1.5;
+}
 
-<section class="panel">
-  <h2>Layout<small>Grid size, sheets and cut margins</small></h2>
-  <div class="row">
-    <label><input type="checkbox" id="mode2" checked> 2×A3</label>
-    <label><input type="checkbox" id="mode4"> 4×A3</label>
-    <label><input type="checkbox" id="modeT2"> 2×Tabloid</label>
-    <label><input type="checkbox" id="modeT4"> 4×Tabloid</label>
-    <label><input type="checkbox" id="modeC"> Custom</label>
-  </div>
-  <div class="row inl" id="customFields" style="display:none">
-    Paper <select id="cPaper"><option value="a3">A3</option><option value="tab">Tabloid</option></select>
-    Cols <input class="n" type="number" id="cCols" value="20" min="1" max="100">
-    Rows <input class="n" type="number" id="cRows" value="20" min="1" max="100">
-    Sheets across <input class="n" type="number" id="cAcross" value="2" min="1" max="8">
-    down <input class="n" type="number" id="cDown" value="2" min="1" max="8">
-  </div>
-  <div class="row">
-    <label>Cut margin <input class="n" type="number" id="margin" min="0" max="15" step="0.5" value="5"> mm</label>
-    <label><input type="checkbox" id="sheetLabels" checked> Sheet labels</label>
-    <label><input type="checkbox" id="showSplit"> Preview split</label>
-  </div>
-</section>
+:focus-visible { outline: 3px solid var(--teal); outline-offset: 2px; }
 
-<section class="panel">
-  <h2>Grid<small>How the grid lines look</small></h2>
-  <div class="row">
-    <label>Type <select id="gridType"><option value="square">Square</option><option value="hex">Hex</option></select></label>
-    <label><input type="checkbox" id="showGrid" checked> Include in print/PDF</label>
-    <label><input type="checkbox" id="gridDash"> Dashed</label>
-  </div>
-  <div class="row">
-    <label>Colour <input type="color" id="gridColor" value="#ff3c3c"></label>
-    <label>Opacity <input type="range" id="gridAlpha" min="5" max="100" value="80"> <span id="gridAlphaVal">80%</span></label>
-    <label>Thickness <input type="range" id="gridThick" min="0.1" max="1.5" step="0.05" value="0.4"> <span id="gridThickVal">0.40mm</span></label>
-  </div>
-</section>
+/* Header */
+.site-header { padding: 1rem 1.25rem; border-bottom: 3px solid var(--line); }
+.site-header .inner {
+  max-width: 78rem; margin: 0 auto;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+}
+.brand {
+  display: flex; align-items: center; gap: 0.7rem;
+  color: inherit; text-decoration: none;
+  font-family: "Pixelify Sans", "Courier New", monospace;
+  font-size: 1.2rem; font-weight: 600;
+}
+.brand img { height: 44px; width: auto; max-width: 44px; object-fit: contain; display: block; }
+.back { font-weight: 700; color: var(--teal-dark); text-decoration: none; }
+.back:hover { text-decoration: underline; }
 
-<section class="panel">
-  <h2>Image<small>Size, rotation and alignment. Arrow keys nudge, Shift moves 10×</small></h2>
-  <div class="row">
-    <label><input type="checkbox" id="lockAspect" checked> Lock aspect</label>
-    <label>Rotate <input type="range" id="rotRange" min="-180" max="180" step="1" value="0"> <span id="rotVal">0°</span></label>
-    <button class="secondary" id="rot90">Rotate 90°</button>
-  </div>
-  <div class="row inl">
-    Image is <input class="n" type="number" id="imgCells" value="30" min="1" step="0.5"> cells wide
-    <button class="secondary" id="matchBtn">Match grid</button>
-  </div>
-</section>
+main { max-width: 78rem; margin: 0 auto; padding: 1.75rem 1.25rem 3rem; }
 
-</div>
+h1 {
+  margin: 0 0 0.4rem;
+  font-family: "Pixelify Sans", "Courier New", monospace;
+  font-size: clamp(2rem, 6vw, 3rem);
+  line-height: 1.05; font-weight: 600;
+}
+.sub { margin: 0 0 1.5rem; max-width: 40rem; color: var(--muted); font-size: 1.1rem; }
 
-<div class="info" id="info"></div>
-<div class="info" id="status"></div>
+/* Control groups */
+.controls { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); }
 
-<div id="work">
-  <div id="stage">
-    <div class="placeholder" id="placeholder">Upload an image to get started</div>
-    <div class="gridlines" id="grid"></div>
-    <div class="split" id="split"></div>
-  </div>
-</div>
-</main>
-<div id="printArea"></div>
+.panel {
+  background: var(--surface);
+  border: 2px solid var(--line);
+  box-shadow: 4px 4px 0 var(--line);
+  padding: 0.9rem 1.1rem 1.1rem;
+  display: flex; flex-direction: column; gap: 0.6rem;
+}
+.panel h2 {
+  margin: 0;
+  font-family: "Pixelify Sans", "Courier New", monospace;
+  font-size: 1.25rem; font-weight: 600; color: var(--teal-dark);
+}
+.panel h2 small {
+  display: block; margin-top: 0.1rem;
+  font-family: "Atkinson Hyperlegible", system-ui, sans-serif;
+  font-size: 0.85rem; font-weight: 400; color: var(--muted);
+}
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; }
+.panel label, .panel .inl { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.95rem; cursor: pointer; }
+.panel .inl { cursor: default; flex-wrap: wrap; }
+
+input[type=checkbox] { accent-color: var(--teal); width: 1.05rem; height: 1.05rem; }
+input[type=range] { accent-color: var(--teal); }
+input[type=color] { width: 2.2rem; height: 1.8rem; border: 2px solid var(--line); background: var(--surface); padding: 0; }
+
+select, input.n {
+  background: var(--surface); color: var(--ink);
+  border: 2px solid var(--line); border-radius: 0;
+  padding: 0.25rem 0.4rem; font: inherit;
+}
+input.n { width: 4.2rem; }
+
+input[type=file] { font: inherit; color: var(--muted); max-width: 100%; }
+input[type=file]::file-selector-button {
+  font: inherit; font-weight: 700; color: var(--ink);
+  background: var(--surface); border: 2px solid var(--line);
+  padding: 0.4rem 0.8rem; margin-right: 0.7rem; cursor: pointer;
+  box-shadow: 3px 3px 0 var(--line);
+}
+
+button {
+  font: inherit; font-weight: 700; cursor: pointer;
+  padding: 0.45rem 0.9rem;
+  color: var(--bg); background: var(--teal-dark);
+  border: 2px solid var(--line); border-radius: 0;
+  box-shadow: 3px 3px 0 var(--line);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+button:hover:not(:disabled) { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--line); }
+button.secondary { color: var(--ink); background: var(--surface); }
+button:disabled { opacity: 0.6; cursor: wait; }
+
+.info { font-size: 0.85rem; color: var(--muted); margin: 0.9rem 0 0; }
+#status:empty { display: none; }
+
+/* Workspace */
+#work {
+  overflow: auto; scrollbar-gutter: stable both-edges;
+  background: var(--work);
+  border: 2px solid var(--line);
+  padding: 140px; max-height: 74vh; margin-top: 1rem;
+}
+#stage {
+  position: relative; margin: 0 auto; flex: none;
+  background: var(--stage);
+  outline: 3px solid var(--teal);
+  touch-action: none;
+}
+.gridlines, .split { position: absolute; inset: 0; pointer-events: none; }
+.gridlines { z-index: 5; }
+.split { z-index: 7; }
+.gridlines svg { display: block; width: 100%; height: 100%; }
+.split .vl { position: absolute; top: 0; bottom: 0; width: 0; border-left: 2px dashed #2aa8ff; }
+.split .hl { position: absolute; left: 0; right: 0; height: 0; border-top: 2px dashed #2aa8ff; }
+.split .lbl { position: absolute; padding: 2px 7px; background: rgba(42,168,255,.9); color: #fff; font-size: 11px; }
+
+.imgwrap { position: absolute; cursor: grab; touch-action: none; outline: 1px dashed rgba(22,34,43,.7); z-index: 1; transform-origin: 50% 50%; }
+.imgwrap:active { cursor: grabbing; }
+.imgwrap img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; user-select: none; }
+.handle {
+  position: absolute; width: 20px; height: 20px; right: -10px; bottom: -10px;
+  background: var(--teal); border: 2px solid var(--line);
+  cursor: nwse-resize; touch-action: none; z-index: 6;
+}
+.rot {
+  position: absolute; left: 50%; top: -38px; width: 18px; height: 18px; margin-left: -9px;
+  background: var(--surface); border: 2px solid var(--line); border-radius: 50%;
+  cursor: grab; touch-action: none; z-index: 6;
+}
+.rot::after { content: ""; position: absolute; left: 50%; top: 100%; width: 2px; height: 18px; margin-left: -1px; background: var(--line); }
+.placeholder {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  color: var(--muted); font-size: 1rem; text-align: center; padding: 20px; pointer-events: none;
+}
+
+@media (max-width: 30rem) {
+  .brand span { font-size: 1rem; }
+  main { padding-top: 1.25rem; }
+  #work { padding: 60px; }
+}
+
+@media (prefers-reduced-motion: reduce) { button { transition: none; } }
+
+/* Printing: only the sheets print */
+#printArea { display: none; }
+@media print {
+  body * { visibility: hidden !important; }
+  #printArea, #printArea * { visibility: visible !important; }
+  #printArea { display: block !important; position: absolute; top: 0; left: 0; margin: 0; padding: 0; }
+  .page { position: relative; overflow: hidden; background: #fff; page-break-after: always; break-after: page; }
+  .page:last-child { page-break-after: auto; break-after: auto; }
+  .page .inner { position: absolute; top: 0; left: 0; overflow: visible; background: #fff; }
+  .page .inner img { position: absolute; }
+  .page .gridlines svg { display: block; width: 100%; height: 100%; }
+}
