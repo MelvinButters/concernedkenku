@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Make a Connections Game – Concerned Kenku</title>
+<link rel="icon" href="../assets/Kenku.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Pixelify+Sans:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#e6edee; --surface:#f6f9f9; --ink:#16222b; --muted:#4d5f69;
+    --teal:#1f7f82; --teal-dark:#155a5d; --line:#16222b;
+    --g0:#f1d76a; --g1:#8fc28a; --g2:#86aedd; --g3:#b789cf; --gink:#16222b;
+    color-scheme:light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#131c22; --surface:#1b2830; --ink:#e4eef0; --muted:#9fb2ba; --teal:#4cc3c3; --teal-dark:#7fdada; --line:#4cc3c3; color-scheme:dark; }
+  }
+  *{box-sizing:border-box;}
+  [hidden]{ display:none !important; }
+  body{ margin:0; background:var(--bg); color:var(--ink); font-family:'Atkinson Hyperlegible',system-ui,-apple-system,'Segoe UI',sans-serif; font-size:1rem; line-height:1.5; }
+  :focus-visible{ outline:3px solid var(--teal); outline-offset:2px; }
+
+  .site-header{ padding:1rem 1.25rem; border-bottom:3px solid var(--line); }
+  .site-header .inner{ max-width:46rem; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+  .brand{ display:flex; align-items:center; gap:.7rem; color:inherit; text-decoration:none; font-family:'Pixelify Sans','Courier New',monospace; font-size:1.2rem; font-weight:600; }
+  .brand img{ height:44px; width:auto; max-width:44px; object-fit:contain; display:block; }
+  .back{ font-weight:700; color:var(--teal-dark); text-decoration:none; }
+  .back:hover{ text-decoration:underline; }
+
+  main{ max-width:46rem; margin:0 auto; padding:1.75rem 1.25rem 3rem; }
+  h1{ margin:0 0 .4rem; font-family:'Pixelify Sans','Courier New',monospace; font-size:clamp(2rem,7vw,3rem); line-height:1.05; font-weight:600; }
+  .sub{ margin:0 0 1.5rem; color:var(--muted); font-size:1.1rem; max-width:36rem; }
+
+  button, .btn{
+    font:inherit; font-weight:700; cursor:pointer; padding:.5rem 1rem; text-decoration:none; display:inline-block;
+    color:var(--bg); background:var(--teal-dark); border:2px solid var(--line); border-radius:0;
+    box-shadow:3px 3px 0 var(--line); transition:transform .1s, box-shadow .1s;
+  }
+  button:hover:not(:disabled), .btn:hover{ transform:translate(2px,2px); box-shadow:1px 1px 0 var(--line); }
+  button:disabled{ opacity:.5; cursor:default; }
+  button.secondary, .btn.secondary{ color:var(--ink); background:var(--surface); }
+  .row{ display:flex; flex-wrap:wrap; gap:.75rem; align-items:center; }
+  .row.center{ justify-content:center; }
+
+  /* create */
+  .groups{ display:grid; gap:1.1rem; margin-bottom:1.25rem; }
+  .group{ background:var(--surface); border:2px solid var(--line); box-shadow:4px 4px 0 var(--line); padding:.9rem 1rem 1rem; }
+  .group h2{ margin:0 0 .6rem; font-size:1rem; display:flex; align-items:center; gap:.6rem; }
+  .swatch{ width:1.2rem; height:1.2rem; border:2px solid var(--line); display:inline-block; }
+  .words{ display:grid; grid-template-columns:repeat(4,1fr); gap:.5rem; margin-top:.5rem; }
+  @media (max-width:34rem){ .words{ grid-template-columns:repeat(2,1fr); } }
+  input[type=text]{ width:100%; font:inherit; padding:.45rem .6rem; background:var(--bg); color:var(--ink); border:2px solid var(--line); border-radius:0; }
+  .error{ color:#c0392b; font-weight:700; margin:.2rem 0 1rem; min-height:1.4em; }
+  @media (prefers-color-scheme: dark){ .error{ color:#ff8a7a; } }
+  .linkbox{ margin-top:1.5rem; padding:1.1rem; background:var(--surface); border:2px solid var(--line); box-shadow:4px 4px 0 var(--line); }
+  .linkbox label{ display:block; font-weight:700; margin-bottom:.4rem; }
+  .note{ color:var(--muted); font-size:.9rem; margin:.8rem 0 0; }
+
+  /* play */
+  .toast{ min-height:1.6em; text-align:center; font-weight:700; margin:0 0 .6rem; }
+  .solved{ display:grid; gap:8px; margin-bottom:8px; }
+  .banner{ padding:.7rem .5rem; text-align:center; color:var(--gink); border:2px solid var(--line); animation:pop .45s ease-out both; }
+  .banner b{ display:block; text-transform:uppercase; letter-spacing:.03em; }
+  .banner span{ display:block; text-transform:uppercase; font-size:.9rem; }
+  .banner.g0{ background:var(--g0); } .banner.g1{ background:var(--g1); } .banner.g2{ background:var(--g2); } .banner.g3{ background:var(--g3); }
+  @keyframes pop{ from{ opacity:0; transform:translateY(-8px) scale(.98); } to{ opacity:1; transform:none; } }
+  .board{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+  .tile{
+    height:4.4rem; padding:.25rem; display:flex; align-items:center; justify-content:center; text-align:center;
+    font:inherit; font-weight:700; text-transform:uppercase; font-size:clamp(.7rem,2.8vw,1rem); line-height:1.15; overflow-wrap:anywhere;
+    color:var(--ink); background:var(--surface); border:2px solid var(--line); box-shadow:2px 2px 0 var(--line);
+  }
+  .tile.sel{ background:var(--teal-dark); color:var(--bg); transform:translate(2px,2px); box-shadow:0 0 0 var(--line); }
+  .tile.shake{ animation:shake .4s; }
+  @keyframes shake{ 0%,100%{ transform:translateX(0); } 20%,60%{ transform:translateX(-6px); } 40%,80%{ transform:translateX(6px); } }
+  .lives{ display:flex; gap:.5rem; justify-content:center; align-items:center; margin:1.1rem 0; color:var(--muted); font-weight:700; }
+  .dot{ width:.9rem; height:.9rem; border-radius:50%; background:var(--teal-dark); border:2px solid var(--line); }
+  .dot.gone{ background:transparent; opacity:.4; }
+  .result{ text-align:center; margin:1.5rem auto 0; max-width:28rem; }
+  .result h2{ margin:0 0 .3rem; font-family:'Pixelify Sans','Courier New',monospace; font-size:1.6rem; font-weight:600; }
+
+  @media (prefers-reduced-motion: reduce){ .banner, .tile.shake{ animation:none; } button, .btn{ transition:none; } }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="../index.html">
+      <img src="../assets/Kenku.png" alt="">
+      <span>Concerned Kenku</span>
+    </a>
+    <a class="back" href="../index.html">All tools</a>
+  </div>
+</header>
+
+<main>
+
+  <!-- CREATE -->
+  <section id="create">
+    <h1>Make a Connections game</h1>
+    <p class="sub">Make four groups of four words that share something in common, then send the link to a friend. They have to sort the 16 words back into their groups.</p>
+    <div class="groups" id="groups"></div>
+    <p class="error" id="createError" role="alert"></p>
+    <div class="row"><button id="makeBtn">Make link</button></div>
+    <div class="linkbox" id="linkBox" hidden>
+      <label for="linkOut">Share this link</label>
+      <input type="text" id="linkOut" readonly>
+      <div class="row" style="margin-top:.9rem">
+        <button id="copyBtn">Copy link</button>
+        <a class="btn secondary" id="tryLink" href="#">Try it yourself</a>
+      </div>
+      <p class="note">The whole puzzle is stored inside the link, so it gets long. The answers are scrambled, but anyone determined enough could still decode them.</p>
+    </div>
+  </section>
+
+  <!-- PLAY -->
+  <section id="play" hidden>
+    <h1>Connections</h1>
+    <p class="sub">Pick four words that go together, then press Submit. You can make four mistakes.</p>
+    <p class="toast" id="toast" role="status" aria-live="polite"></p>
+    <div class="solved" id="solved"></div>
+    <div class="board" id="board"></div>
+    <div class="lives" id="lives" aria-live="polite"></div>
+    <div class="row center" id="controls">
+      <button class="secondary" id="shuffleBtn">Shuffle</button>
+      <button class="secondary" id="clearBtn">Deselect all</button>
+      <button id="submitBtn" disabled>Submit</button>
+    </div>
+    <div class="result" id="result" hidden>
+      <h2 id="resultTitle"></h2>
+      <p class="sub" id="resultText" style="margin:0 auto 1rem"></p>
+      <div class="row center">
+        <button id="shareBtn">Copy my result</button>
+        <a class="btn secondary" href="connections.html">Make your own</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const MAX_MISTAKES = 4;
+  const NAMES = ['Group 1 (easiest)','Group 2','Group 3','Group 4 (hardest)'];
+  const EMOJI = ['🟨','🟩','🟦','🟪'];
+
+  /* ---------- link encoding: the puzzle as JSON, scrambled byte by byte, then base64url ---------- */
+  function b64u(bytes){ let s=''; bytes.forEach(b=>{ s+=String.fromCharCode(b); }); return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+  function unb64u(str){ str=str.replace(/-/g,'+').replace(/_/g,'/'); while(str.length%4) str+='='; const bin=atob(str); return Uint8Array.from(bin, c=>c.charCodeAt(0)); }
+  function encode(puz){
+    const data = new TextEncoder().encode(JSON.stringify(puz));
+    const key = 1 + Math.floor(Math.random()*255);
+    const out = new Uint8Array(data.length+1); out[0] = key;
+    for(let i=0;i<data.length;i++) out[i+1] = data[i] ^ ((key + i*31) & 255);
+    return b64u(out);
+  }
+  function decode(code){
+    try{
+      const raw = unb64u(code), key = raw[0], data = new Uint8Array(raw.length-1);
+      for(let i=0;i<data.length;i++) data[i] = raw[i+1] ^ ((key + i*31) & 255);
+      const puz = JSON.parse(new TextDecoder().decode(data));
+      if(!Array.isArray(puz) || puz.length!==4) return null;
+      for(const g of puz){ if(!Array.isArray(g) || g.length!==5 || g.some(x=>typeof x!=='string' || !x.trim())) return null; }
+      return puz;
+    }catch(e){ return null; }
+  }
+  const codeFromHash = () => location.hash.replace(/^#\/?/, '');
+
+  /* ---------- create ---------- */
+  const groupsEl = $('groups');
+  for(let g=0; g<4; g++){
+    const d = document.createElement('div'); d.className = 'group';
+    d.innerHTML = '<h2><span class="swatch" style="background:var(--g'+g+')"></span>'+NAMES[g]+'</h2>'+
+      '<label class="sr" for="t'+g+'" style="font-size:.9rem;font-weight:700">What connects them?</label>'+
+      '<input type="text" id="t'+g+'" maxlength="40" autocomplete="off" placeholder="e.g. Types of cheese">'+
+      '<div class="words">'+[0,1,2,3].map(w=>'<input type="text" id="w'+g+'_'+w+'" maxlength="24" autocomplete="off" aria-label="Word '+(w+1)+' of group '+(g+1)+'" placeholder="Word '+(w+1)+'">').join('')+'</div>';
+    groupsEl.appendChild(d);
+  }
+  function showCreate(msg){
+    $('play').hidden = true; $('create').hidden = false;
+    document.title = 'Make a Connections Game – Concerned Kenku';
+    $('createError').textContent = msg || '';
+  }
+  $('makeBtn').addEventListener('click', ()=>{
+    const puz = [], seen = new Set();
+    for(let g=0; g<4; g++){
+      const t = $('t'+g).value.trim();
+      const ws = [0,1,2,3].map(w=>$('w'+g+'_'+w).value.trim());
+      if(!t){ $('createError').textContent = 'Group '+(g+1)+' needs a title.'; return; }
+      for(const w of ws){
+        if(!w){ $('createError').textContent = 'Group '+(g+1)+' needs all four words.'; return; }
+        const k = w.toLowerCase();
+        if(seen.has(k)){ $('createError').textContent = '"'+w+'" is used twice. Every word must be different.'; return; }
+        seen.add(k);
+      }
+      puz.push([t, ...ws]);
+    }
+    $('createError').textContent = '';
+    const url = location.origin + location.pathname + '#' + encode(puz);
+    $('linkOut').value = url; $('tryLink').href = url; $('linkBox').hidden = false;
+    $('linkOut').select();
+  });
+  $('copyBtn').addEventListener('click', async ()=>{
+    try{ await navigator.clipboard.writeText($('linkOut').value); }
+    catch(e){ $('linkOut').select(); document.execCommand('copy'); }
+    $('copyBtn').textContent = 'Copied!'; setTimeout(()=> $('copyBtn').textContent = 'Copy link', 1500);
+  });
+  $('tryLink').addEventListener('click', ()=>{ setTimeout(route, 0); });
+
+  /* ---------- play ---------- */
+  let puz, tiles, remaining, selected, solved, mistakes, over, guessed, log;
+  const board = $('board'), toast = $('toast');
+  const say = m => { toast.textContent = m; };
+
+  function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+
+  function startGame(p){
+    puz = p; tiles = []; 
+    p.forEach((g,gi)=>{ for(let w=1; w<=4; w++) tiles.push({id:tiles.length, text:g[w], g:gi}); });
+    remaining = shuffle(tiles.slice()); selected = new Set(); solved = []; mistakes = 0; over = false; guessed = new Set(); log = [];
+    $('create').hidden = true; $('play').hidden = false; $('result').hidden = true; $('controls').hidden = false;
+    document.title = 'Connections – Concerned Kenku';
+    $('solved').innerHTML = ''; say('');
+    renderBoard(); renderLives(); updateButtons();
+  }
+  function renderBoard(){
+    board.innerHTML = '';
+    remaining.forEach(t=>{
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'tile' + (selected.has(t.id) ? ' sel' : ''); b.textContent = t.text; b.dataset.id = t.id;
+      b.setAttribute('aria-pressed', selected.has(t.id));
+      b.addEventListener('click', ()=> toggle(t.id, b));
+      board.appendChild(b);
+    });
+  }
+  function toggle(id, el){
+    if(over) return;
+    if(selected.has(id)){ selected.delete(id); }
+    else { if(selected.size>=4) return; selected.add(id); }
+    el.classList.toggle('sel', selected.has(id)); el.setAttribute('aria-pressed', selected.has(id));
+    say(''); updateButtons();
+  }
+  function updateButtons(){
+    $('submitBtn').disabled = over || selected.size!==4;
+    $('clearBtn').disabled = over || selected.size===0;
+    $('shuffleBtn').disabled = over;
+  }
+  function renderLives(){
+    const l = $('lives'); l.innerHTML = 'Mistakes left: ';
+    for(let i=0;i<MAX_MISTAKES;i++){ const d=document.createElement('span'); d.className='dot'+(i>=MAX_MISTAKES-mistakes?' gone':''); l.appendChild(d); }
+  }
+  function addBanner(gi){
+    const g = puz[gi], d = document.createElement('div');
+    d.className = 'banner g'+gi;
+    const b = document.createElement('b'); b.textContent = g[0];
+    const s = document.createElement('span'); s.textContent = g.slice(1).join(', ');
+    d.appendChild(b); d.appendChild(s); $('solved').appendChild(d);
+  }
+  function solveGroup(gi){
+    remaining = remaining.filter(t=>t.g!==gi);
+    selected = new Set(); solved.push(gi); addBanner(gi); renderBoard(); updateButtons();
+  }
+
+  $('shuffleBtn').addEventListener('click', ()=>{ if(over) return; shuffle(remaining); renderBoard(); });
+  $('clearBtn').addEventListener('click', ()=>{ selected = new Set(); say(''); renderBoard(); updateButtons(); });
+  $('submitBtn').addEventListener('click', ()=>{
+    if(over || selected.size!==4) return;
+    const ids = Array.from(selected).sort((a,b)=>a-b), key = ids.join(',');
+    if(guessed.has(key)){ say('You already guessed that'); return; }
+    guessed.add(key);
+    const gs = ids.map(id=>tiles[id].g), counts = [0,0,0,0];
+    gs.forEach(g=>counts[g]++);
+    log.push(gs.slice().sort((a,b)=>a-b));
+    const full = counts.indexOf(4);
+    if(full>=0){
+      say('');
+      solveGroup(full);
+      if(solved.length===4) finish(true);
+      return;
+    }
+    mistakes++; renderLives();
+    say(Math.max.apply(null,counts)===3 ? 'One away!' : 'Not quite');
+    board.querySelectorAll('.tile.sel').forEach(el=>{ el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); });
+    if(mistakes>=MAX_MISTAKES){
+      over = true; updateButtons();
+      setTimeout(()=>{
+        selected = new Set();
+        const left = [0,1,2,3].filter(g=>solved.indexOf(g)<0);
+        left.forEach((g,i)=> setTimeout(()=>{ solved.push(g); remaining = remaining.filter(t=>t.g!==g); addBanner(g); renderBoard(); if(i===left.length-1) finish(false); }, i*450));
+      }, 500);
+    } else {
+      setTimeout(()=>{ selected = new Set(); renderBoard(); updateButtons(); }, 450);
+    }
+  });
+
+  function finish(won){
+    over = true; updateButtons(); $('controls').hidden = true;
+    $('result').hidden = false;
+    if(won){
+      $('resultTitle').textContent = mistakes===0 ? 'Perfect!' : 'You got them all!';
+      $('resultText').textContent = 'You made ' + mistakes + (mistakes===1 ? ' mistake.' : ' mistakes.');
+    } else {
+      $('resultTitle').textContent = 'Out of mistakes';
+      $('resultText').textContent = 'Here are the groups you were looking for.';
+    }
+    $('result').scrollIntoView({behavior:'smooth', block:'nearest'});
+  }
+  $('shareBtn').addEventListener('click', async ()=>{
+    const rows = log.map(r=>r.map(g=>EMOJI[g]).join(''));
+    const text = 'Connections\n' + rows.join('\n') + '\n' + location.origin + location.pathname;
+    try{ await navigator.clipboard.writeText(text); $('shareBtn').textContent = 'Copied!'; }
+    catch(e){ $('shareBtn').textContent = 'Copy failed'; }
+    setTimeout(()=> $('shareBtn').textContent = 'Copy my result', 1500);
+  });
+
+  /* ---------- routing ---------- */
+  function route(){
+    const code = codeFromHash();
+    if(!code){ showCreate(); return; }
+    const p = decode(code);
+    if(!p){ showCreate('That link doesn\'t look right. You can make a new one here.'); return; }
+    startGame(p);
+  }
+  window.addEventListener('hashchange', route);
+  route();
+})();
+</script>
+</body>
+</html>
