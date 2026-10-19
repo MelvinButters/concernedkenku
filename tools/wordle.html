@@ -57,14 +57,21 @@
     --tile:max(1.7rem, min(3.8rem, calc((min(100vw, 30rem) - 3rem - (var(--len) - 1) * 6px) / var(--len))));
     justify-content:safe center; overflow-x:auto; max-width:100%; padding-bottom:.25rem; }
   .rowg{ display:grid; grid-template-columns:repeat(var(--len), var(--tile)); gap:6px; }
-  .tile{ height:var(--tile); display:flex; align-items:center; justify-content:center; font-family:'Pixelify Sans','Courier New',monospace; font-size:calc(var(--tile) * .55); font-weight:600; text-transform:uppercase;
-    background:var(--surface); border:2px solid var(--muted); color:var(--ink); }
+  .tile{ height:var(--tile); display:flex; align-items:center; justify-content:center; font-family:'Atkinson Hyperlegible',system-ui,-apple-system,'Segoe UI',sans-serif; font-size:calc(var(--tile) * .5); font-weight:700; text-transform:uppercase;
+    background:var(--surface); border:2px solid var(--muted); color:var(--ink); backface-visibility:hidden; will-change:transform; }
   .tile.filled{ border-color:var(--line); }
-  .tile.c, .tile.p, .tile.a{ border-color:transparent; animation:flip .5s ease both; animation-delay:calc(var(--i) * .25s); }
-  .tile.c{ background:var(--ok); color:var(--ok-ink); }
-  .tile.p{ background:var(--near); color:var(--near-ink); }
-  .tile.a{ background:var(--miss); color:var(--miss-ink); }
-  @keyframes flip{ 0%{ transform:rotateX(0); } 50%{ transform:rotateX(90deg); } 100%{ transform:rotateX(0); } }
+  .tile.c{ --res-bg:var(--ok);   --res-ink:var(--ok-ink); }
+  .tile.p{ --res-bg:var(--near); --res-ink:var(--near-ink); }
+  .tile.a{ --res-bg:var(--miss); --res-ink:var(--miss-ink); }
+  .tile.c, .tile.p, .tile.a{ background:var(--res-bg); color:var(--res-ink); border-color:transparent;
+    animation:reveal .6s ease-in-out both; animation-delay:calc(var(--i) * var(--step, 250ms)); }
+  /* the colour only changes while the tile is edge-on, so it never shows before the spin */
+  @keyframes reveal{
+    0%   { transform:scaleY(1); background:var(--surface); color:var(--ink); border-color:var(--line); }
+    49%  { transform:scaleY(0); background:var(--surface); color:var(--ink); border-color:var(--line); }
+    50%  { transform:scaleY(0); background:var(--res-bg);  color:var(--res-ink); border-color:transparent; }
+    100% { transform:scaleY(1); background:var(--res-bg);  color:var(--res-ink); border-color:transparent; }
+  }
   .rowg.shake{ animation:shake .4s; }
   @keyframes shake{ 0%,100%{ transform:translateX(0); } 20%,60%{ transform:translateX(-6px); } 40%,80%{ transform:translateX(6px); } }
 
@@ -192,16 +199,18 @@
 
   /* ---------- play mode ---------- */
   let target='', len=5, row=0, col=0, over=false, guesses=[], marks=[], keyState={};
+  let step=250;
   const board = $('board'), kb = $('kb'), toast = $('toast');
 
   function startGame(word){
-    target = word; len = word.length; row = 0; col = 0; over = false; guesses = []; marks = []; keyState = {};
+    target = word; len = word.length; step = Math.max(60, Math.min(250, Math.floor(1600/len))); row = 0; col = 0; over = false; guesses = []; marks = []; keyState = {};
     guesses = Array.from({length:MAX_TRIES}, ()=>[]);
     $('create').hidden = true; $('play').hidden = false; $('result').hidden = true;
     document.title = 'Wordle – Concerned Kenku';
     $('playSub').textContent = 'Someone made this one for you. It\'s a ' + len + '-letter word and you have ' + MAX_TRIES + ' guesses.';
     toast.textContent = '';
     board.style.setProperty('--len', len);
+    board.style.setProperty('--step', step + 'ms');
     board.innerHTML = '';
     for(let r=0;r<MAX_TRIES;r++){
       const rowEl = document.createElement('div'); rowEl.className = 'rowg';
@@ -273,7 +282,7 @@
       const k = g[i], rank = {a:1,p:2,c:3};
       if(!keyState[k] || rank[res[i]]>rank[keyState[k]]) keyState[k] = res[i];
     }
-    const delay = len*250 + 300;
+    const delay = (len-1)*step + 700;
     setTimeout(()=>{
       kb.querySelectorAll('.key').forEach(b=>{
         const s = keyState[b.dataset.k]; if(s){ b.classList.remove('a','p','c'); b.classList.add(s); }
