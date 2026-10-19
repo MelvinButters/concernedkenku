@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Make a Wordle – Concerned Kenku</title>
+<link rel="icon" href="../assets/Kenku.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Pixelify+Sans:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#e6edee; --surface:#f6f9f9; --ink:#16222b; --muted:#4d5f69;
+    --teal:#1f7f82; --teal-dark:#155a5d; --line:#16222b;
+    --ok:#1f7f82; --ok-ink:#fff; --near:#d9a92a; --near-ink:#16222b; --miss:#5b6b73; --miss-ink:#fff;
+    color-scheme:light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#131c22; --surface:#1b2830; --ink:#e4eef0; --muted:#9fb2ba; --teal:#4cc3c3; --teal-dark:#7fdada; --line:#4cc3c3;
+      --ok:#1f8f92; --miss:#3a4b54; color-scheme:dark; }
+  }
+  *{box-sizing:border-box;}
+  body{ margin:0; background:var(--bg); color:var(--ink); font-family:'Atkinson Hyperlegible',system-ui,-apple-system,'Segoe UI',sans-serif; font-size:1rem; line-height:1.5; }
+  :focus-visible{ outline:3px solid var(--teal); outline-offset:2px; }
+
+  .site-header{ padding:1rem 1.25rem; border-bottom:3px solid var(--line); }
+  .site-header .inner{ max-width:46rem; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+  .brand{ display:flex; align-items:center; gap:.7rem; color:inherit; text-decoration:none; font-family:'Pixelify Sans','Courier New',monospace; font-size:1.2rem; font-weight:600; }
+  .brand img{ height:44px; width:auto; max-width:44px; object-fit:contain; display:block; }
+  .back{ font-weight:700; color:var(--teal-dark); text-decoration:none; }
+  .back:hover{ text-decoration:underline; }
+
+  main{ max-width:46rem; margin:0 auto; padding:1.75rem 1.25rem 3rem; }
+  h1{ margin:0 0 .4rem; font-family:'Pixelify Sans','Courier New',monospace; font-size:clamp(2rem,7vw,3rem); line-height:1.05; font-weight:600; }
+  .sub{ margin:0 0 1.5rem; color:var(--muted); font-size:1.1rem; max-width:34rem; }
+  [hidden]{ display:none !important; }
+
+  .panel{ background:var(--surface); border:2px solid var(--line); box-shadow:5px 5px 0 var(--line); padding:1.25rem; max-width:32rem; }
+  label{ display:block; font-weight:700; margin-bottom:.4rem; }
+  input[type=text]{ width:100%; font:inherit; font-size:1.3rem; letter-spacing:.2em; text-transform:uppercase; padding:.5rem .7rem; background:var(--bg); color:var(--ink); border:2px solid var(--line); border-radius:0; }
+  .row{ display:flex; flex-wrap:wrap; gap:.75rem; margin-top:1rem; align-items:center; }
+  button, .btn{
+    font:inherit; font-weight:700; cursor:pointer; padding:.5rem 1rem; text-decoration:none; display:inline-block;
+    color:var(--bg); background:var(--teal-dark); border:2px solid var(--line); border-radius:0;
+    box-shadow:3px 3px 0 var(--line); transition:transform .1s, box-shadow .1s;
+  }
+  button:hover, .btn:hover{ transform:translate(2px,2px); box-shadow:1px 1px 0 var(--line); }
+  button.secondary, .btn.secondary{ color:var(--ink); background:var(--surface); }
+  .error{ color:#c0392b; font-weight:700; margin:.6rem 0 0; min-height:1.4em; }
+  @media (prefers-color-scheme: dark){ .error{ color:#ff8a7a; } }
+  .linkbox{ margin-top:1.25rem; padding-top:1.25rem; border-top:2px dashed var(--line); }
+  .note{ color:var(--muted); font-size:.9rem; margin:.9rem 0 0; }
+
+  /* game */
+  .toast{ min-height:1.6em; text-align:center; font-weight:700; margin:0 0 .75rem; }
+  .board{ display:grid; gap:6px; justify-content:center; margin:0 auto 1.5rem; --len:5;
+    --tile:max(1.7rem, min(3.8rem, calc((min(100vw, 30rem) - 3rem - (var(--len) - 1) * 6px) / var(--len))));
+    justify-content:safe center; overflow-x:auto; max-width:100%; padding-bottom:.25rem; }
+  .rowg{ display:grid; grid-template-columns:repeat(var(--len), var(--tile)); gap:6px; }
+  .tile{ height:var(--tile); display:flex; align-items:center; justify-content:center; font-family:'Pixelify Sans','Courier New',monospace; font-size:calc(var(--tile) * .55); font-weight:600; text-transform:uppercase;
+    background:var(--surface); border:2px solid var(--muted); color:var(--ink); }
+  .tile.filled{ border-color:var(--line); }
+  .tile.c, .tile.p, .tile.a{ border-color:transparent; animation:flip .5s ease both; animation-delay:calc(var(--i) * .25s); }
+  .tile.c{ background:var(--ok); color:var(--ok-ink); }
+  .tile.p{ background:var(--near); color:var(--near-ink); }
+  .tile.a{ background:var(--miss); color:var(--miss-ink); }
+  @keyframes flip{ 0%{ transform:rotateX(0); } 50%{ transform:rotateX(90deg); } 100%{ transform:rotateX(0); } }
+  .rowg.shake{ animation:shake .4s; }
+  @keyframes shake{ 0%,100%{ transform:translateX(0); } 20%,60%{ transform:translateX(-6px); } 40%,80%{ transform:translateX(6px); } }
+
+  .kb{ display:grid; gap:6px; max-width:30rem; margin:0 auto; }
+  .kbrow{ display:flex; gap:5px; justify-content:center; }
+  .key{ flex:1 1 0; min-width:0; height:3.2rem; padding:0; font-size:.95rem; color:var(--ink); background:var(--surface); box-shadow:2px 2px 0 var(--line); }
+  .key.wide{ flex:1.6 1 0; font-size:.8rem; }
+  .key.c{ background:var(--ok); color:var(--ok-ink); }
+  .key.p{ background:var(--near); color:var(--near-ink); }
+  .key.a{ background:var(--miss); color:var(--miss-ink); opacity:.85; }
+
+  .result{ text-align:center; margin:1.5rem auto 0; max-width:28rem; }
+  .result h2{ margin:0 0 .3rem; font-family:'Pixelify Sans','Courier New',monospace; font-size:1.6rem; font-weight:600; }
+  .result .row{ justify-content:center; }
+
+  @media (prefers-reduced-motion: reduce){ .tile, .rowg.shake{ animation:none !important; } button, .btn{ transition:none; } }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="../index.html">
+      <img src="../assets/Kenku.png" alt="">
+      <span>Concerned Kenku</span>
+    </a>
+    <a class="back" href="../index.html">All tools</a>
+  </div>
+</header>
+
+<main>
+
+  <!-- CREATE MODE -->
+  <section id="create">
+    <h1>Make a Wordle</h1>
+    <p class="sub">Pick a secret word, get a link, and send it to a friend. They get six guesses to find it.</p>
+    <div class="panel">
+      <label for="wordInput">Your secret word (any length, letters only)</label>
+      <input type="text" id="wordInput" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <p class="error" id="createError" role="alert"></p>
+      <div class="row"><button id="makeBtn">Make link</button></div>
+      <div class="linkbox" id="linkBox" hidden>
+        <label for="linkOut">Share this link</label>
+        <input type="text" id="linkOut" readonly style="letter-spacing:0; text-transform:none; font-size:1rem;">
+        <div class="row">
+          <button id="copyBtn">Copy link</button>
+          <a class="btn secondary" id="tryLink" href="#">Try it yourself</a>
+        </div>
+        <p class="note">The word is scrambled inside the link, so it isn't readable at a glance. Anyone determined enough could still decode it.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- PLAY MODE -->
+  <section id="play" hidden>
+    <h1>Wordle</h1>
+    <p class="sub" id="playSub"></p>
+    <p class="toast" id="toast" role="status" aria-live="polite"></p>
+    <div class="board" id="board" aria-label="Guess board"></div>
+    <div class="kb" id="kb"></div>
+    <div class="result" id="result" hidden>
+      <h2 id="resultTitle"></h2>
+      <p id="resultText" class="sub" style="margin:0 auto 1rem;"></p>
+      <div class="row">
+        <button id="shareBtn">Copy my result</button>
+        <a class="btn secondary" href="wordle.html">Make your own</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const A = 'abcdefghijklmnopqrstuvwxyz';
+  const MAX_TRIES = 6;
+
+  /* ---------- link encoding: a salt letter, then each letter shifted by a different amount ---------- */
+  function encode(word){
+    const salt = Math.floor(Math.random()*26);
+    let out = A[salt];
+    for(let i=0;i<word.length;i++){
+      out += A[(A.indexOf(word[i]) + salt + i*7 + 3) % 26];
+    }
+    return out;
+  }
+  function decode(code){
+    if(!/^[a-z]{2,}$/.test(code)) return null;
+    const salt = A.indexOf(code[0]);
+    let out = '';
+    for(let i=1;i<code.length;i++){
+      out += A[(((A.indexOf(code[i]) - salt - (i-1)*7 - 3) % 26) + 26) % 26];
+    }
+    return out;
+  }
+  function codeFromHash(){
+    return location.hash.replace(/^#\/?/, '').replace(/^\?/, '').toLowerCase();
+  }
+
+  /* ---------- create mode ---------- */
+  function showCreate(msg){
+    $('play').hidden = true; $('create').hidden = false;
+    document.title = 'Make a Wordle – Concerned Kenku';
+    $('createError').textContent = msg || '';
+  }
+  $('makeBtn').addEventListener('click', ()=>{
+    const w = $('wordInput').value.trim().toLowerCase();
+    if(!/^[a-z]+$/.test(w)){ $('createError').textContent = 'Use letters A to Z only, with no spaces.'; return; }
+    $('createError').textContent = '';
+    const url = location.origin + location.pathname + '#' + encode(w);
+    $('linkOut').value = url;
+    $('tryLink').href = url;
+    $('linkBox').hidden = false;
+    $('linkOut').select();
+  });
+  $('wordInput').addEventListener('keydown', e=>{ if(e.key==='Enter') $('makeBtn').click(); });
+  $('copyBtn').addEventListener('click', async ()=>{
+    const v = $('linkOut').value;
+    try{ await navigator.clipboard.writeText(v); $('copyBtn').textContent = 'Copied!'; }
+    catch(e){ $('linkOut').select(); document.execCommand('copy'); $('copyBtn').textContent = 'Copied!'; }
+    setTimeout(()=> $('copyBtn').textContent = 'Copy link', 1500);
+  });
+  $('tryLink').addEventListener('click', ()=>{ setTimeout(route, 0); });
+
+  /* ---------- play mode ---------- */
+  let target='', len=5, row=0, col=0, over=false, guesses=[], marks=[], keyState={};
+  const board = $('board'), kb = $('kb'), toast = $('toast');
+
+  function startGame(word){
+    target = word; len = word.length; row = 0; col = 0; over = false; guesses = []; marks = []; keyState = {};
+    guesses = Array.from({length:MAX_TRIES}, ()=>[]);
+    $('create').hidden = true; $('play').hidden = false; $('result').hidden = true;
+    document.title = 'Wordle – Concerned Kenku';
+    $('playSub').textContent = 'Someone made this one for you. It\'s a ' + len + '-letter word and you have ' + MAX_TRIES + ' guesses.';
+    toast.textContent = '';
+    board.style.setProperty('--len', len);
+    board.innerHTML = '';
+    for(let r=0;r<MAX_TRIES;r++){
+      const rowEl = document.createElement('div'); rowEl.className = 'rowg';
+      for(let c=0;c<len;c++){
+        const t = document.createElement('div'); t.className = 'tile'; t.style.setProperty('--i', c); rowEl.appendChild(t);
+      }
+      board.appendChild(rowEl);
+    }
+    buildKeyboard();
+  }
+  function buildKeyboard(){
+    kb.innerHTML = '';
+    const rows = ['qwertyuiop','asdfghjkl','+zxcvbnm-'];
+    rows.forEach(r=>{
+      const rEl = document.createElement('div'); rEl.className = 'kbrow';
+      r.split('').forEach(k=>{
+        const b = document.createElement('button');
+        b.className = 'key';
+        if(k==='+'){ b.textContent='Enter'; b.classList.add('wide'); b.dataset.k='Enter'; }
+        else if(k==='-'){ b.textContent='Delete'; b.classList.add('wide'); b.dataset.k='Backspace'; b.setAttribute('aria-label','Delete'); }
+        else { b.textContent=k; b.dataset.k=k; }
+        b.addEventListener('click', ()=> press(b.dataset.k));
+        rEl.appendChild(b);
+      });
+      kb.appendChild(rEl);
+    });
+  }
+  function say(msg){ toast.textContent = msg; }
+  function tiles(r){ return board.children[r].children; }
+
+  function press(k){
+    if($('play').hidden || over) return;
+    if(k==='Enter') return submit();
+    if(k==='Backspace'){
+      if(col>0){ col--; guesses[row].pop(); const t = tiles(row)[col]; t.textContent=''; t.classList.remove('filled'); }
+      return;
+    }
+    if(/^[a-z]$/.test(k) && col<len){
+      guesses[row].push(k); const t = tiles(row)[col]; t.textContent = k; t.classList.add('filled'); col++;
+    }
+  }
+  document.addEventListener('keydown', e=>{
+    if(e.ctrlKey||e.metaKey||e.altKey) return;
+    const t = e.target.tagName;
+    if(t==='INPUT'||t==='TEXTAREA') return;
+    if(e.key==='Enter' && t==='BUTTON') return;
+    if(e.key==='Enter'||e.key==='Backspace'){ if(!$('play').hidden){ e.preventDefault(); press(e.key); } }
+    else if(/^[a-zA-Z]$/.test(e.key)) press(e.key.toLowerCase());
+  });
+
+  function score(guess){
+    const res = Array(len).fill('a'), left = {};
+    for(let i=0;i<len;i++){ if(guess[i]===target[i]) res[i]='c'; else left[target[i]] = (left[target[i]]||0)+1; }
+    for(let i=0;i<len;i++){ if(res[i]!=='c' && left[guess[i]]>0){ res[i]='p'; left[guess[i]]--; } }
+    return res;
+  }
+  function submit(){
+    if(col<len){
+      say('Not enough letters');
+      const el = board.children[row]; el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake');
+      return;
+    }
+    say('');
+    const g = guesses[row].join(''), res = score(g);
+    marks.push(res);
+    const ts = tiles(row);
+    for(let i=0;i<len;i++){
+      ts[i].classList.add(res[i]);
+      const k = g[i], rank = {a:1,p:2,c:3};
+      if(!keyState[k] || rank[res[i]]>rank[keyState[k]]) keyState[k] = res[i];
+    }
+    const delay = len*250 + 300;
+    setTimeout(()=>{
+      kb.querySelectorAll('.key').forEach(b=>{
+        const s = keyState[b.dataset.k]; if(s){ b.classList.remove('a','p','c'); b.classList.add(s); }
+      });
+    }, delay);
+    if(g===target){ over = true; setTimeout(()=>finish(true), delay); return; }
+    row++; col = 0;
+    if(row===MAX_TRIES){ over = true; setTimeout(()=>finish(false), delay); }
+  }
+  function finish(won){
+    $('result').hidden = false;
+    if(won){
+      $('resultTitle').textContent = 'You got it!';
+      $('resultText').textContent = 'Solved in ' + marks.length + ' of ' + MAX_TRIES + '.';
+    } else {
+      $('resultTitle').textContent = 'Out of guesses';
+      $('resultText').textContent = 'The word was ' + target.toUpperCase() + '.';
+    }
+    $('result').scrollIntoView({behavior:'smooth', block:'nearest'});
+  }
+  $('shareBtn').addEventListener('click', async ()=>{
+    const em = {c:'🟩', p:'🟨', a:'⬛'};
+    const won = marks.length && marks[marks.length-1].every(x=>x==='c');
+    const lines = marks.map(m=>m.map(x=>em[x]).join(''));
+    const text = 'Wordle ' + (won ? marks.length : 'X') + '/' + MAX_TRIES + '\n' + lines.join('\n') + '\n' + location.origin + location.pathname;
+    try{ await navigator.clipboard.writeText(text); $('shareBtn').textContent = 'Copied!'; }
+    catch(e){ $('shareBtn').textContent = 'Copy failed'; }
+    setTimeout(()=> $('shareBtn').textContent = 'Copy my result', 1500);
+  });
+
+  /* ---------- routing ---------- */
+  function route(){
+    const code = codeFromHash();
+    if(!code){ showCreate(); return; }
+    const w = decode(code);
+    if(!w){ showCreate('That link doesn\'t look right. You can make a new one here.'); return; }
+    startGame(w);
+  }
+  window.addEventListener('hashchange', route);
+  route();
+})();
+</script>
+</body>
+</html>
